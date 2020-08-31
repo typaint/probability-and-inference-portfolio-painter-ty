@@ -1,0 +1,272 @@
+---
+title: "Roulette"
+author: " Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+library(magrittr)
+library(ggplot2)
+```
+ 
+# Introduction
+  I will be running simulations to answer multiple questions regarding the efficiency of the "Martingale" strategy when playing Roulette. I will calculate the average earnings that a gambler can expect, along with the probability of walking out with a profit when using this strategy. I will also examine how a gambler's earnings will evolve over a series of plays. 
+
+  Other factors I will study are the affects of the average earnings by changing an input parameter and how the stopping rules impact the number of plays a gambler completes.
+## Background
+Roulette is a popular game found at casinos and many other places. It is a round table of 38 evenly-sized pockets on a wheel, composed of 18 black, 18 red, and 2 green pockets. Each pocket is also numbered. To win in Roulette, a gambler must pick a pocket (by color, number, odd/even, etc.) where the marble comes to rest. For this simulation we are picking by color (red) in which the payout is \$1 for each \$1 wagered. An example would be a gambler bets \$5 on red and if the marble lands on red, then the gambler would receive the \$5 bet back, along with an addition \$5 in winnings for a total of \$10. If the marble landed on black, then the gambler would lose the \$5 bet.
+
+  I will be using the "Martingale" strategy to play Roulette in this simulation. The flowchart below provides the process to follow the Martingale strategy.
+![Martingale flowchart](/Users/TyPainter1/Documents/Masters/Fall\ 2020/DS-5620/martingale-flowchart.png){#id .class width=50% height=50%}
+# Methods
+Here will be the majority of your code (simulations, functions, game theory, etc.). Be sure to comment your code so that Tom and the TA's can read through it easily. 
+```{r}
+#' A single play of the Martingale strategy
+#'
+#' Takes a state list, spins the roulette wheel, returns the state list with updated values (for example, budget, plays, etc)
+#' @param state A list with the following entries: 
+#'   B              number, the budget
+#'   W              number, the budget threshold for successfully stoping
+#'   L              number, the maximum number of plays 
+#'   M              number, the casino wager limit
+#'   plays          integer, the number of plays executed
+#'   previous_wager number, the wager in the previous play (0 at first play)
+#'   previous_win   TRUE/FALSE, indicator if the previous play was a win (TRUE at first play)
+#' @return The updated state list
+one_play <- function(state){
+  
+    # Wager
+    proposed_wager <- ifelse(state$previous_win, 1, 2*state$previous_wager) 
+    wager <- min(proposed_wager, state$M, state$B)  
+    
+    # Spin of the wheel
+    # Returns 1 for TRUE, 0 for FALSE
+    red <- rbinom(1,1,18/38)
+    
+    # Update state
+    state$plays <- state$plays + 1
+    state$previous_wager <- wager
+    if(red){
+      # WIN is if red = 1 (true)
+      state$B <- state$B + wager
+      state$previous_win <- TRUE
+    }else{
+      # LOSE is if red = 0 (false)
+      state$B <- state$B - wager
+      state$previous_win <- FALSE
+    }
+  state
+}
+
+
+#' Stopping rule
+#'
+#' Takes the state list and determines if the gambler has to stop
+#' @param state A list.  See one_play
+#' @return TRUE/FALSE
+stop_play <- function(state){
+  if(state$B <= 0) return(TRUE) 
+  if(state$plays >= state$L) return(TRUE)
+  if(state$B >= state$W) return(TRUE)
+  FALSE
+}
+
+
+#' Play roulette to either bankruptcy, success, or play limits
+#'
+#' @param B number, the starting budget
+#' @param W number, the budget threshold for successfully stoping
+#' @param L number, the maximum number of plays 
+#' @param M number, the casino wager limit
+#' @return A vector of budget values calculated after each play.
+one_series <- function(
+    B = 200
+  , W = 300
+  , L = 1000
+  , M = 100
+){
+
+  # initial state
+  state <- list(
+    B = B
+  , W = W
+  , L = L
+  , M = M
+  , plays = 0
+  , previous_wager = 0
+  , previous_win = TRUE
+  )
+  
+  # vector to store budget over series of plays
+  budget <- rep(NA, L)
+  
+  # For loop of plays
+  for(i in 1:L){
+    new_state <- state %>% one_play
+    budget[i] <- new_state$B
+    if(new_state %>% stop_play){
+      return(budget[1:i])
+    }
+    state <- new_state
+  }
+  budget    
+}
+
+# helper function
+get_last <- function(x) x[length(x)] 
+
+
+# Simulation
+walk_out_money <- rep(NA, 10000)
+for(j in seq_along(walk_out_money)){
+  walk_out_money[j] <- one_series(B = 200, W = 300, L = 1000, M = 100) %>% get_last
+}
+
+# Walk out money distribution
+hist(walk_out_money, breaks = 100)
+
+# Estimated probability of walking out with extra cash
+mean(walk_out_money > 200)
+
+# Estimated earnings
+mean(walk_out_money - 200)
+```
+
+In the histogram above, you can see the distribution of the two possible outcomes of either walking out bankrupt with \$0 or walking out with the maximum winnings threshold of \$300. In this case, there are slightly more instances where the gambler is walking out with the maximum profit (5,166) compared to walking out bankrupt (4,834) producing a winning probability of 51.66%. To calculate the average earnings, I found the amount of money the gambler walked away with after each simulation and subtracted the starting budget of \$200 to find the profit/loss margin. I used each of 10,000 profits/losses from each simulation to find the total average loss of -\$44.96.
+
+The probability of walking out with a profit and the estimated earnings calculations can be a bit deceiving. While the probability of walking out with the maximum profit is over 50%, the average earning is actually negative implying the the gambler will walk away on average losing money. I believe this is due to difference in the maximum winnings threshold (+\$100) and maximum loss threshold (-\$200). 
+  The average earnings are skewed because of the profit/loss limits. Every time the gambler goes bankrupt, the loss is \$200, but every time the gambler hits the maximum winnings, the profit is only \$100. So even though in this simulation the gambler won more times than not, the losses are worth more when calculating the average.
+  Also, by setting the profit limit lower you can decrease the number of plays the gambler can attempt, thus increasing the chances of profiting. This is because the odds are in the houses favor and with each additional play the gambler incrementally decreases their chances of winning. If you were to increase the maximum winnings threshold by another \$100 to a total of \$400 to make the profit/loss limits equal, you would see a dramatic decrease in the probability of winning. In the histogram below, the probability of walking out a winner decreased from 51.66% to 31.27%.
+    
+```{r}
+# Simulation with winning threshold increased to $400
+walk_out_money <- rep(NA, 10000)
+for(j in seq_along(walk_out_money)){
+  walk_out_money[j] <- one_series(B = 200, W = 400, L = 1000, M = 100) %>% get_last
+}
+
+# Walk out money distribution
+hist(walk_out_money, breaks = 100)
+
+# Estimated probability of walking out with extra cash
+mean(walk_out_money > 200)
+
+# Estimated earnings
+mean(walk_out_money - 200)
+```
+
+# Results
+```{r}
+#' Count number of plays to either bankruptcy, success, or play limits
+#'
+#' @param B number, the starting budget
+#' @param W number, the budget threshold for successfully stoping
+#' @param L number, the maximum number of plays 
+#' @param M number, the casino wager limit
+#' @return A vector of budget values calculated after each play.
+one_series_plays <- function(
+    B = 200
+  , W = 300
+  , L = 1000
+  , M = 100
+){
+
+  # initial state
+  state <- list(
+    B = B
+  , W = W
+  , L = L
+  , M = M
+  , plays = 0
+  , previous_wager = 0
+  , previous_win = TRUE
+  )
+  
+  # vector to store budget over series of plays
+  plays <- rep(NA, L)
+  
+  # For loop of plays
+  for(i in 1:L){
+    new_state <- state %>% one_play
+    plays[i] <- new_state$plays
+    if(new_state %>% stop_play){
+      return(plays[1:i])
+    }
+    state <- new_state
+  }
+  plays   
+}
+# Simulation for number of plays per series in 10,000 simulations 
+plays_per_series <- rep(NA, 10000)
+for(j in seq_along(plays_per_series)){
+  plays_per_series[j] <- one_series_plays(B = 200, W = 400, L = 1000, M = 100) %>% get_last
+}
+
+# Estimated number of plays before stopping
+mean(plays_per_series)
+```
+I calculated an average of 339 plays through 10,000 simulations that a gambler will attempt before hitting one of the following stopping conditions:
+  - Player has W (\$300) dollars
+  - Player goes bankrupt (\$0)
+  - Player completes L (1,000) wagers (or plays)
+I did this by creating a one_series_plays function to simulate a series of plays until reaching a stopping condition. I then passed the results of the one_series_plays function into another function (plays_per_series) to simulate 10,000 series. 
+
+```{r}
+#' Play roulette to either bankruptcy, success, or play limits
+#'
+#' @param B number, the starting budget
+#' @param W number, the budget threshold for successfully stoping
+#' @param L number, the maximum number of plays 
+#' @param M number, the casino wager limit
+#' @return A vector of budget values calculated after each play.
+budget_per_play <- function(
+    B = 200
+  , W = 300
+  , L = 1000
+  , M = 100
+){
+
+  # initial state
+  state <- list(
+    B = B
+  , W = W
+  , L = L
+  , M = M
+  , plays = 0
+  , previous_wager = 0
+  , previous_win = TRUE
+  )
+  
+  # vector to store budget over series of plays
+  budget <- rep(NA, L)
+  
+  # For loop of plays
+  for(i in 1:L){
+    new_state <- state %>% one_play
+    budget[i] <- new_state$B
+    if(new_state %>% stop_play){
+      return(budget[1:i])
+    }
+    state <- new_state
+  }
+  budget    
+}
+
+# Chart of how a gambler's earnings evolve over a series of plays 
+#geom_line(x = plays_per_series(), y = walk_out_money())
+```
+
+Sentence explaining summary statistics. 
+
+# Conclusions
+Clearly outline the conclusions you have made from the methods (simulations, functions, game theory, etc.). You must answer EVERY question mentioned in the assignment. Again this is an example of how to write a blog post and you may not always need all of the sections (Introduction, Background, Methods, Results, Conclusions). 
+Be prepared to share your blog post with the class when the deliverable is due. The deliverable should be your own work. You may discuss concepts with classmates, but you may not share code or text.
+
+
