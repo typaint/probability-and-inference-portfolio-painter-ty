@@ -1,0 +1,139 @@
+---
+title: "Monte Carlo Error"
+author: "Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true 
+    toc_depth: 3
+    toc_float: true
+---
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+```
+This is one example of how to write a blog post for Data Science 5620 Course. You do not have to use this template but you will have to rigorously answer every question mentioned in the assignment. 
+# Introduction
+Here you will introduce the questions you would like to answer in this deliverable. 
+## Background
+You must give all background information needed for a "stranger" to be able to understand this deliverable. Assume this "stranger" is not a statistician or a data scientist.
+# Methods
+Here will be the majority of your code (simulations, functions, game theory, etc.). Be sure to comment your code so that Tom and the TA's can read through it easily. 
+```{r}
+# Simulation parameters
+parameters <- list(ss = 4, # sample size
+                   p = .1, # probability 
+                   r = 5000) # replicates
+
+# Function to create data and estimate p_hat
+create_data_estimate_p <- function(paramters) {
+  parameters$p_hat <- rbinom(parameters$r, parameters$ss, parameters$p) / parameters$ss # rbinom creates data, then divide by sample size to estimate p_hat
+  parameters
+}
+
+# Function to calculate absolute error = |p_hat - p|
+absolute_error <- function(parameters) {
+  abs(parameters$p_hat - parameters$p)
+}
+
+# Function to calculate mean absolute and relative error for each data point
+one_p_n <- function(parameters) {
+  ae<- parameters %>% create_data_estimate_p %>% absolute_error # assign absolute_error function to ae variable
+    
+  re <- ae / parameters$p # calculate relative error = |p_hat - p| / p
+  mae <- mean(ae) # calculate mean absolute error
+  mre <- mean(re) # calculate mean relative error
+  c(mae, mre)
+}
+
+one_p_n(parameters)
+
+# Function to establish parameters for simulations
+simulation_settings <- expand.grid(
+    r = 5000
+  , p = c(.01, .05, .1, .25, .5)
+  , ss = 2^(2:15)
+  , mae = NA_real_
+  , mre = NA_real_
+  , KEEP.OUT.ATTRS = FALSE
+)
+
+# For loop calculate the MAE and MRE for each row using the one_p_n function above
+for(i in 1:nrow(simulation_settings)) {
+  simulation_settings[i, c("mae", "mre")] <- simulation_settings[i, ] %>% as.list() %>% one_p_n 
+}
+
+# Output
+# | P | N | Mean Absolute Error (MAE) | Mean Relative Error (MRE) |
+# |---|---|---------------------------|---------------------------|
+
+
+## Plots
+require(tgsify)
+
+simulation_settings %>% 
+  mutate(col = factor(p) %>% as.numeric) %>% 
+  plotstyle(upright, mar = c(3,3,2,1)) %>% 
+  plot_setup(mae ~ log(ss, base = 2)) %>% 
+  split(.$p) %>% 
+  lwith({
+    lines(log(ss, base = 2), mae, type = "b", col = col[1], lwd = 4)
+    c(p[1], col[1])
+  }) %>% 
+  do.call("rbind", .) %>% 
+  (function(x){
+    legend("topright", legend = "p = "%|% x[,1], col =x[,2], lwd = 4, bty = "n")
+    })
+box()
+axis(side = 1, at = axTicks(1), labels = 2^axTicks(1))
+axis(2)
+title(main = "Mean Absolute Error")
+title(ylab = "MAE", line = 2)
+title(xlab = "Sample Size", line = 1.5)
+
+
+simulation_settings %>% 
+  mutate(col = factor(p) %>% as.numeric) %>% 
+  plotstyle(upright, mar = c(3,3,2,1)) %>% 
+  plot_setup(mre ~ log(ss, base = 2)) %>% # change base, put error on log base (straight line relationships indicates linear structure)
+  split(.$p) %>% 
+  lwith({
+    lines(log(ss, base = 2), mre, type = "b", col = col[1], lwd = 4) # change base
+    c(p[1], col[1])
+  }) %>% 
+  do.call("rbind", .) %>% 
+  (function(x){
+    legend("topright", legend = "p = "%|% x[,1], col =x[,2], lwd = 4, bty = "n")
+    })
+box()
+axis(side = 1, at = axTicks(1), labels = 2^axTicks(1)) # change base
+axis(2)
+title(main = "Mean Relative Error")
+title(ylab = "MRE", line = 2)
+title(xlab = "Sample Size", line = 1.5)
+```
+Explain all of your output for example here we would have a sentence explaining the histogram.
+# Results
+```{r}
+# Summary of success vector
+summary(success.vec)
+```
+Sentence explaining summary statistics. 
+## Hints
+This is how you report inline stats like the mean: `r mean(success.vec)`. 
+You may include latex if needed: $P(A\cup B)=P(A)+ P(B) - P(A\cap B)$
+Here is an example inline Table:
+| One | Two | Three | Four |
+|:---:|:---:|:-----:|:----:|
+|  1  |   1 |  a    |  -1  |
+|  2  |   2 |  b    |   -3 |
+|  3  |   4 |  c    |   +1 |
+This is how you include an image:
+![Caption: Image of Dog.](/Users/meganhollister/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vanderbilt/Fall 2020/TA DS Prob/TA-Resources-DS-5620/Blog Template/dog.png){#id .class width=50% height=50%}
+# Conclusions
+Clearly outline the conclusions you have made from the methods (simulations, functions, game theory, etc.). You must answer EVERY question mentioned in the assignment. Again this is an example of how to write a blog post and you may not always need all of the sections (Introduction, Background, Methods, Results, Conclusions). 
+Be prepared to share your blog post with the class when the deliverable is due. The deliverable should be your own work. You may discuss concepts with classmates, but you may not share code or text. 
