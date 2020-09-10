@@ -15,18 +15,32 @@ knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 library(magrittr)
 library(dplyr)
 library(ggplot2)
+set.seed(09102020)
 ```
  
 # Introduction
-Here you will introduce the questions you would like to answer in this deliverable. 
+
+  In a Monte Carlo simulation there is some degree of error in the quantity estimates made. I will analyze the relationship between the numbers of replicates run versus the simulation error by using a different set of parameters for each simualtion.
+
 ## Background
-You must give all background information needed for a "stranger" to be able to understand this deliverable. Assume this "stranger" is not a statistician or a data scientist.
+
+  The Monte Carlo simulation helps predict the **risk** or **uncertainty** of a situation by measuring the error of repeated simulations. Replicates and error have an inverse relationship, therefore as replicates in a simulation increase, the degree of error should decrease.
+  There are two types of error that will be measured when estimating probabilities from simulation, **absolute error** and **relative error**. 
+  
+  **Absolute Error** = |Estimated Probability ($\hat{p}$) - True Probability (p)|
+    The absolute error is the difference between the approximated (calculated in simulations) and actual probabilities.
+    
+  **Relative Error** = $\frac{|\hat{p}-p|} {p}$
+    The relative error is the absolute error, relative to the actual probability.
+  
+  In this analysis I will run a 14x5 factorial simulation using a combination of replicate numbers ($2^2...2^{15}$) and probability (0.01, 0.05, 0.1, 0.25, 0.5) to estimate the errors above for each combination. The results will be plotted to display how the number of replicates will affect both types of errors.
+
 # Methods
-Here will be the majority of your code (simulations, functions, game theory, etc.). Be sure to comment your code so that Tom and the TA's can read through it easily. 
+
 ```{r}
 # Simulation parameters
 parameters <- list(ss = 4, # sample size
-                   p = .1, # probability 
+                   p = .1, # true probability 
                    r = 5000) # replicates
 
 # Function to create data and estimate p_hat
@@ -50,8 +64,6 @@ one_p_n <- function(parameters) {
   c(mae, mre)
 }
 
-one_p_n(parameters)
-
 # Establish parameters for simulations
 simulation_settings <- expand.grid(
     r = 5000
@@ -66,9 +78,15 @@ simulation_settings <- expand.grid(
 for(i in 1:nrow(simulation_settings)) {
   simulation_settings[i, c("mae", "mre")] <- simulation_settings[i, ] %>% as.list() %>% one_p_n 
 }
+
+# Display a data frame of the values that will be in the plots
+simulation_settings
 ```
-Explain all of your output for example here we would have a sentence explaining the histogram.
+ 
+  This data frame displays the values of the mean absolute error (MAE) and mean relative error (MRE) for each combination of true probability (p) and sample size (ss) that will be used in the plots below. Each rows will represent its own data point on the plot.
+
 # Results
+
 ```{r}
   ## Plots
 require(tgsify)
@@ -114,18 +132,11 @@ title(main = "Mean Relative Error")
 title(ylab = "MRE", line = 2)
 title(xlab = "Sample Size", line = 1.5)
 ```
-Sentence explaining summary statistics. 
-## Hints
-This is how you report inline stats like the mean: `r mean(success.vec)`. 
-You may include latex if needed: $P(A\cup B)=P(A)+ P(B) - P(A\cap B)$
-Here is an example inline Table:
-| One | Two | Three | Four |
-|:---:|:---:|:-----:|:----:|
-|  1  |   1 |  a    |  -1  |
-|  2  |   2 |  b    |   -3 |
-|  3  |   4 |  c    |   +1 |
-This is how you include an image:
-![Caption: Image of Dog.](/Users/meganhollister/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vanderbilt/Fall 2020/TA DS Prob/TA-Resources-DS-5620/Blog Template/dog.png){#id .class width=50% height=50%}
+  
+  The graphs above show the correlation between the MAE/MRE as the sample size increases. As expected both types of errors decrease and approach 0 as the sample size exponentially increases.
+
 # Conclusions
-Clearly outline the conclusions you have made from the methods (simulations, functions, game theory, etc.). You must answer EVERY question mentioned in the assignment. Again this is an example of how to write a blog post and you may not always need all of the sections (Introduction, Background, Methods, Results, Conclusions). 
-Be prepared to share your blog post with the class when the deliverable is due. The deliverable should be your own work. You may discuss concepts with classmates, but you may not share code or text. 
+
+  The one difference between mean absolute error and mean relative error is the correlation between the true probability. My interpretation of this is that for the for mean absolute error, the more extreme the probability (Ex: .01 or .99) the lower your mean absolute error because the amount of uncertainty is very low. On the other hand a probability of 0.5 leaves an uncertainty of half so the absolute error will be higher. 
+ 
+  For mean relative error, the absolute error is compared to the actual probability. So the same amount of error for multiple probabilities of will be emphasized more will a smaller actual probability value (Ex: 01, .05), rather than the higher probabilities (Ex: .5). To put this into perspective, for the relative error to be equal for probability measurements of .01 and .5, the absolute error for a probability = .5 would have to be 50 times more than the absolute error of probability = .01.
