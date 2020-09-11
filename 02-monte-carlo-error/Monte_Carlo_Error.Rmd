@@ -79,8 +79,8 @@ for(i in 1:nrow(simulation_settings)) {
   simulation_settings[i, c("mae", "mre")] <- simulation_settings[i, ] %>% as.list() %>% one_p_n 
 }
 
-# Display a data frame of the values that will be in the plots
-simulation_settings
+# Display a summary of the data frame of the values that will be in the plots
+summary(simulation_settings)
 ```
  
   This data frame displays the values of the mean absolute error (MAE) and mean relative error (MRE) for each combination of true probability (p) and sample size (ss) that will be used in the plots below. Each rows will represent its own data point on the plot.
