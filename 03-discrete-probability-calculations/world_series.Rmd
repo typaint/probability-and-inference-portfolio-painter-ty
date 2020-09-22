@@ -1,0 +1,95 @@
+---
+title: "World Series"
+author: " Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+```
+ 
+# Introduction
+
+  In this blog, I will perform different calculations based on various probabilities and discrete probabilities to examine the affect of the win probability of a head-to-head matchup has over a multiple game series.
+
+## Background
+
+  The World Series is a best-of-7 game series between the champions from the American and National League. A best-of-7 game series designates the first team to win 4 games as the winner of the series. I will use the rules of probability and discrete probability to calculate the probabilities related to winning the World Series. In my scenario, the Braves (National League Champion) and the Yankees (American League Champion) will be competing for the World Series. The probability of the Braves winning an individual game will be represented by $P_B$ and the probability of the Yankees winning an individual game will be represented by $P_Y$ = 1 - $P_B$.
+
+# Methods
+
+## Question 1
+```{r}
+# probability of the Braves losing 3 or fewer games, before winning 4 games, with a win probability of .55
+pnbinom(3, 4, .55)
+```
+
+## Question 2
+```{r}
+head_2_head <- seq(from = .5, to = 1, .01) # sequence of head to head win probabilities
+win_ws <- rep(0, 51) # create initial probability of winning World Series
+
+for(i in 1:length(head_2_head)) {
+  # find the probability of winning the World Series based on each head to head win probability
+  win_ws[i] = pnbinom(3, 4, head_2_head[i]) 
+}
+# plot results
+plot(x = head_2_head, y = win_ws, type = 'l',
+     xlab = 'Probability of the Braves winning a head-to-head matchup',
+     ylab = 'Probability of the Braves winning the World Series',
+     main = 'Probability of winning the World Series')
+```
+
+## Question 3
+```{r}
+wins_needed <- 0 # initiate wins needed to end the series variable
+world_series_prob <- 0 # initiate probability of winning the WS variable
+# calculate how many wins are needed to make the winning the WS probability over .8
+while(world_series_prob < .8){ 
+  wins_needed = wins_needed + 1
+  world_series_prob = pnbinom(wins_needed - 1, wins_needed, .55)
+}
+series_length <- wins_needed + (wins_needed - 1) # calculate series length by adding wins and losses (wins_needed -1)
+series_length
+```
+
+## Question 4
+```{r}
+xhead_2_head <- seq(from = .51, to = 1, .01) # sequence of head to head win probabilities
+xworld_series_prob <- rep(0, 50) # initiate blank vector for probability of winning the WS variable
+xseries_length <- rep(0, 50) # initiate blank vector for series length variable
+# calculate the shortest length of a series needed for various head-to-head win probabilities
+for(i in 1:length(xhead_2_head)) {
+  xwins_needed = 0
+  while(xworld_series_prob[i] < .8) {
+    xwins_needed = xwins_needed + 1
+    xworld_series_prob[i] = pnbinom(xwins_needed - 1, xwins_needed, xhead_2_head[i]) 
+  }
+  xseries_length[i] <- xwins_needed + (xwins_needed - 1)
+}
+# plot results
+plot(x = xhead_2_head, y = xseries_length, type ='l',
+     xlab = 'Probability of the Braves winning a head-to-head matchup',
+     ylab = 'Series Length',
+     main = 'Shortest series so that P(Win WS given p) >= 0.8')
+```
+
+## Question 5 
+
+   I used Bayes Theorem to calculate P($P_B$ = 0.55 | Braves win WS in 7 games), under the assumption that $P_B$ = 0.45 or 0.55. I assumed the each win probability would be have an equal chance of being used so each marginal row probability would be 0.5. I then used dnbinom(3, 4, $P_B$) to calculate the row probabilities for $P_B$ = 0.55 and 0.45. I then multiplied the row probabilities of $P_B$ = 0.55 (.1668) and $P_B$ = 0.45 (.1364) by the each row marginal probability of 0.5. This result in the cell probabilities of P($P_B$ = 0.55 & Braves win WS in 7 games) = .0834 and P($P_B$ = 0.45 & Braves win WS in 7 games) = .0682. I added these cell probabilities together to find the column marginal probability for P(Braves win WS in 7 games) = .1516. Now to find the P($P_B$ = 0.55 | Braves win WS in 7 games), I divided the P($P_B$ = 0.55 & Braves win WS in 7 games) by the marginal probability for P(Braves win WS in 7 games) to calculate ($\frac{.0834} {.1516}$) the P($P_B$ = 0.55 | Braves win WS in 7 games) = .5501.
+   
+# Conclusions
+
+The conclusions I made were strictly from the two graphs displayed above. The probability of winning the World Series based on the probability of winning a head-to-head matchup seems to flatten out when the probability of winning a head-to-head matchup is at least 0.8. From this I conclude that the probability of winning the World Series remains similar with a head-to-head win probability that is at least 0.8. For the other graph, the length of a series decreases significantly when the head-to-head win probability increases from 0.5 to 0.6, the the curve flattens out with anything greater than 0.6 I concluded that a head-to-head win proability that is at least 0.6 dramatically reduces the length of a series. 
+
+
+
+
+
+
