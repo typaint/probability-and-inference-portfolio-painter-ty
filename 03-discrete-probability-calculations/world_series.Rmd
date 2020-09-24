@@ -29,6 +29,7 @@ knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 # probability of the Braves losing 3 or fewer games, before winning 4 games, with a win probability of .55
 pnbinom(3, 4, .55)
 ```
+I used pnbinom() to calculate the probability of the Braves winning 4 games while losing 3 or fewer games, with a individual head-to-head winning probability of 0.55.
 
 ## Question 2
 ```{r}
@@ -45,6 +46,7 @@ plot(x = head_2_head, y = win_ws, type = 'l',
      ylab = 'Probability of the Braves winning the World Series',
      main = 'Probability of winning the World Series')
 ```
+In the graph above I calculated the probability of the Braves winning the World Series given the Braves have a certain head-to-head winning percentage ranging from 0.5 to 1.
 
 ## Question 3
 ```{r}
@@ -58,6 +60,7 @@ while(world_series_prob < .8){
 series_length <- wins_needed + (wins_needed - 1) # calculate series length by adding wins and losses (wins_needed -1)
 series_length
 ```
+For the Braves to achieve a World Series win probability over 0.8 with a head-to-head win probability of 0.55, they would need to play a best-of-71 game series. They would have to win 36 games (wins_needed) and could lose no more than 35 games (wins_needed - 1)
 
 ## Question 4
 ```{r}
@@ -79,6 +82,7 @@ plot(x = xhead_2_head, y = xseries_length, type ='l',
      ylab = 'Series Length',
      main = 'Shortest series so that P(Win WS given p) >= 0.8')
 ```
+In the graph above, I found the shortest series of games that the Yankees and Braves would have to play, based on the Braves head-to-head win probability, to ensure the Braves probability of winning the World Series is 0.8.
 
 ## Question 5 
 
