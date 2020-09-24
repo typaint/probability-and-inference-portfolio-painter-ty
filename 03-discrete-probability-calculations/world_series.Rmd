@@ -90,7 +90,7 @@ In the graph above, I found the shortest series of games that the Yankees and Br
    
 # Conclusions
 
-The conclusions I made were strictly from the two graphs displayed above. The probability of winning the World Series based on the probability of winning a head-to-head matchup seems to flatten out when the probability of winning a head-to-head matchup is at least 0.8. From this I conclude that the probability of winning the World Series remains similar with a head-to-head win probability that is at least 0.8. For the other graph, the length of a series decreases significantly when the head-to-head win probability increases from 0.5 to 0.6, the the curve flattens out with anything greater than 0.6 I concluded that a head-to-head win proability that is at least 0.6 dramatically reduces the length of a series. 
+The conclusions I made were strictly from the two graphs displayed above. The probability of winning the World Series based on the probability of winning a head-to-head matchup seems to flatten out when the probability of winning a head-to-head matchup is at least 0.8. From this I conclude that the probability of winning the World Series remains similar with a head-to-head win probability that is at least 0.8. For the other graph, the length of a series decreases significantly when the head-to-head win probability increases from 0.5 to 0.6, the the curve flattens out with anything greater than 0.6 I concluded that a head-to-head win proability that is at least 0.6 dramatically reduces the length of a series.
 
 
 
