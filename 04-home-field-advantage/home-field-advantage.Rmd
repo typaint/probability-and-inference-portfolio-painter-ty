@@ -99,7 +99,6 @@ Calculate the same probabilities as the previous question by simulation.
 ```{r}
 set.seed(092820)
 sim_one_ws <- function(hfi, advantage_multiplier, pb) {
-  
   pbh <- pb*advantage_multiplier # Braves win probability at home
   pba <- 1 - (1 - pb)*advantage_multiplier # Braves win probability away
   win_count = 0
@@ -109,7 +108,10 @@ sim_one_ws <- function(hfi, advantage_multiplier, pb) {
     else {
       p_win = pba
     }
-    
+    if(p_win > 1){
+      win_count = 4
+    }
+    if(win_count == 4) break
     game_result = rbinom(1,1,p_win) # probability of winning one game
     win_count = win_count + game_result
     
@@ -155,11 +157,80 @@ rel_error_no_adv
   Despite both absolute and relative errors being small for having and not having an advantage multiplier, it seems that the no advantage multiplier produces a significantly smaller error. I believe this is due to eliminating the variable for home field advantage. With less variables, the calculations for no advantage multiplier can be more accurate with less volatility. 
 
 ## Bonus 1 
-Does the difference in probabilites (with vs without home field advantage) depend on PB?
+Does the difference in probabilities (with vs without home field advantage) depend on PB?
+```{r}
+set.seed(101620)
+
+var_pb <- seq(from = .50, to = 1, .01) # vector of Brave win probability values
+adv_var_prob = NA # vector of WS win probabilities using home field advantage 
+
+for(i in 1:length(var_pb)){
+  adv_var_prob[i] = analytical_ws(hfi, advantage_multiplier, pb = var_pb[i])[1,2] # use the analytical method
+}
+
+no_adv_var_prob = NA # vector of WS win probabilities NOT using home field advantage
+
+for(i in 1:length(var_pb)){
+  no_adv_var_prob[i] = analytical_ws(hfi, no_adv_multiplier, pb = var_pb[i])[1,2] # use the analytical method
+}
+
+library(ggplot2)
+adv_var_prob <- as.numeric(unlist(adv_var_prob))
+no_adv_var_prob <- as.numeric(unlist(no_adv_var_prob))
+
+bonus1 <- data.frame(probability = var_pb, advatange_win_prob = adv_var_prob, no_advatange_win_prob = no_adv_var_prob) # cretae data frame
+ggplot(bonus1) +
+  geom_line(aes(x = var_pb, y = adv_var_prob, col = "adv_var_prob" )) +
+  geom_line(aes(x = var_pb, y = no_adv_var_prob, col = "no_adv_var_prob")) +
+  labs(
+    x = "Probability of the Braves winning a single individual game",
+    y = "Probability fo the Braves winning the World Series",
+    title = "Does the difference in WS win Probabilities depend
+on the Probability of the Braves winning a single game?"
+  ) + 
+  scale_color_discrete(name = "Home Field Advantage Used?", labels = c("Yes", "No")) 
+
+```
+
+As seen before, increasing the win probability of a single game will also increase the probability of winning the World Series. What surprised me was that despite the Braves playing more games away from home, the advantage multiplier actually World Series probability surpassed the no home field advantage probability. I think could be due to the fact that the Braves could win the World Series in less games actually causing them to play more home games, thus increasing the probability.
 
 ## Bonus 2 
-Does the difference in probabilites (with vs without home field advantage) depend on the advantage factor? (The advantage factor in PBH and PBA is the 1.1 multiplier that results in a 10% increase for the home team.)
+Does the difference in probabilities (with vs without home field advantage) depend on the advantage factor? (The advantage factor in PBH and PBA is the 1.1 multiplier that results in a 10% increase for the home team.)
+```{r}
+set.seed(101820)
 
+
+var_adv_mult =  seq(1, 1.5, 0.01) # vector of advantage multipliers
+adv_var_probx = NA # vector of WS win probabilities using home field advantage
+
+for(i in 1:length(var_adv_mult)){
+  adv_var_probx[i] = analytical_ws(hfi, var_adv_mult[i], pb)[1,2] # use the analytical method
+}
+
+no_adv_var_probx = NA # vector of WS win probabilities NOT using home field advantage
+
+for(i in 1:length(var_adv_mult)){
+  no_adv_var_probx[i] = analytical_ws(hfi, no_adv_multiplier, pb)[1,2] # use the analytical method
+}
+
+adv_var_probx <- as.numeric(unlist(adv_var_probx))
+no_adv_var_probx <- as.numeric(unlist(no_adv_var_probx))
+
+bonus2 <- data.frame(advantage_multiplier = var_adv_mult, advatange_win_prob = adv_var_probx, no_advatange_win_prob = no_adv_var_probx) # create a data frame
+ggplot(bonus2) +
+  geom_line(aes(x = var_adv_mult, y = adv_var_probx, col = "adv_var_prob" )) +
+  geom_line(aes(x = var_adv_mult, y = no_adv_var_probx, col = "no_adv_var_prob")) +
+  labs(
+    x = "Advantage Multiplier",
+    y = "Probability fo the Braves winning the World Series",
+    title = "Does the difference in WS win Probabilities
+depend on the Advantage Multiplier?"
+  ) + 
+  scale_color_discrete(name = "Home Field Advantage Used?", labels = c("Yes", "No")) +
+  scale_x_continuous(labels = function(x){paste0((x-1) * 100, '%')})
+```
+
+This is the graph I was expecting as the line not using home field advantage would be flat and the line using the advanatge multiplier would be heavily decreasing. This is due to the fact that the Braves would be playing more away games than home games, resulting in the home field advantage multiplier casuing a negative affect in the Braves probabiity of winning the World Series.
 
 # Conclusions
 
