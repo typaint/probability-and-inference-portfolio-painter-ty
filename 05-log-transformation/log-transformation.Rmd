@@ -1,0 +1,300 @@
+---
+title: "Log Transformation"
+author: "Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+# Introduction
+
+In this blog post I will analyze the transformation of data among various distributions. I will use both analytic and simulation methods to examine the Cumulative Distribution Function (CDF) and the Probability Density Function (PDF) along with the geometric and arithmetic means.
+
+## Background
+
+The CDF graph shows the distribution of a random variable being less than or equal to a given value. The PDF displays the same random variable as the CDF but displays the relative likelihood of that variable. The arithmetic mean is calculated by adding all values together and then dividing by the number of values (n). The geometric mean is calculated by multiplying all values together and then taking the nth root.
+# Methods
+```{r}
+library(tidyverse)
+library(ggplot2)
+require(magrittr)
+```
+
+## Part 1 
+
+### X~Gamma(shape = 3, scale = 1)
+
+```{r}
+shp = 3
+scal = 1
+gam_quant = seq(0,20, by=.1)
+mean_gam = shp*scal # gamma mean
+median_gam = qgamma(.5,shp,scal) # gamma median
+
+# Graph 1
+gam_cdf <- function(x) pgamma(x, shape = shp, scale = scal) # gamma CDF function
+plot(gam_quant, gam_cdf(gam_quant), type = 'l', # CDF
+      xlab = "Random Variable (x)",
+      ylab = "Probability",
+      main = "CDF for X~Gamma(shape = 3, scale = 1)")
+      abline(v=mean_gam, col = 'red')
+      abline(v=median_gam, col = 'blue')
+      legend("bottomright", c("Mean", "Median"), col=c("red", "blue"), lty=1)
+
+gam_pdf <- function(x) dgamma(x, shape = shp, scale = scal) # gamma PDF function
+plot(gam_quant, gam_pdf(gam_quant), type = 'l', # PDF
+      xlab = "Random Variable (x)",
+      ylab = "Density",
+      main = "PDF for X~Gamma(shape = 3, scale = 1)")
+      abline(v=mean_gam, col = 'red')
+      abline(v=median_gam, col = 'blue')
+      legend("topright", c("Mean", "Median"), col=c("red", "blue"), lty=1)
+
+# Graph 2
+plot(gam_quant, log(gam_cdf(gam_quant)), type = 'l', # CDF log transformation
+      xlab = "Random Variable (x)",
+      ylab = "Probability",
+      main = "CDF for log transformation Y=log(x) of X~Gamma(shape = 3, scale = 1)")
+      abline(v=mean_gam, col = 'red')
+      abline(v=median_gam, col = 'blue')
+      legend("bottomright", c("Mean", "Median"), col=c("red", "blue"), lty=1)
+
+plot(gam_quant, log(gam_pdf(gam_quant)), type = 'l', # PDF log transformation
+      xlab = "Random Variable (x)",
+      ylab = "Density",
+      main = "PDF for log transformation Y=log(x) of X~Gamma(shape = 3, scale = 1)")
+      abline(v=mean_gam, col = 'red')
+      abline(v=median_gam, col = 'blue')
+      legend("topright", c("Mean", "Median"), col=c("red", "blue"), lty=1)
+
+# Graph 3
+samp <- 1000
+sz <- 100
+set.seed(10202020)
+D1 <- rgamma(samp*sz, shape = 3, scale = 1) %>% # create an array of 1,000 samples of size 100
+  array(dim = c(samp,sz))
+gam_am <- apply(D1, 1, function(x) {mean(x)}) # arithmetic mean of each row
+gam_gm <- apply(D1, 1, function(x) {exp(mean(log(x)))}) # geometric mean of each row
+plot(gam_am, gam_gm,
+     xlab = "Arithmetic Mean",
+     ylab = "Geometric Mean")
+abline(0,1, col = "red")
+
+# Histograms
+hist(gam_am, 
+     xlab = "Arithmetic Mean",
+     main = "Histogram of Arithmetic Mean for
+     X~Gamma(shape = 3, scale = 1)")
+hist(gam_gm,
+     xlab = "Geometric Mean",
+     main = "Histogram of Geometric Mean for
+     X~Gamma(shape = 3, scale = 1)")
+```
+
+In this gamma function it is apparent that even thought the probability of having a number less than the mean/median is low, the density of those numbers is extremely high. The arithmetic mean is shown as being greater than the geometric mean in the last 3 graphs as the slope of the points is flatter implying the x-values, the arithmetic mean, has higher values than the y-values, the geometric mean. This is also shown in the histograms where the arithmetic mean has a high distribution around 3 while the geometric mean has a high distribution around 2.5.
+
+### X∼LOG NORMAL(μ = −1, σ = 1)
+
+```{r}
+mu = -1
+sig = 1
+mean_norm = exp(mu+(sig^2/2)) # mean
+median_norm = exp(mu) # median
+norm_quant = seq(0,20,.1)
+
+# Graph 1
+norm_cdf <- function(x) plnorm(x,mu,sig) # normal CDF function
+plot(norm_quant, norm_cdf(norm_quant), type = 'l', # CDF
+      xlab = "Random Variable (x)",
+      ylab = "Probability",
+      main = "CDF for X∼LOG NORMAL(μ = −1, σ = 1)")
+      abline(v=mean_norm, col = 'red')
+      abline(v=median_norm, col = 'blue', lty=2)
+      legend("bottomright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+norm_pdf <- function(x) dlnorm(x,mu,sig) # normal PDF function
+plot(norm_quant, norm_pdf(norm_quant), type = 'l', # PDF
+      xlab = "Random Variable (x)",
+      ylab = "Density",
+      main = "PDF for X∼LOG NORMAL(μ = −1, σ = 1)")
+      abline(v=mean_norm, col = 'red')
+      abline(v=median_norm, col = 'blue', lty=2)
+      legend("topright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+# Graph 2
+plot(norm_quant, log(norm_cdf(norm_quant)), type = 'l', # CDF log transformation
+      xlab = "Random Variable (x)",
+      ylab = "Probability",
+      main = "CDF for log transformation Y=log(x) of X∼LOG NORMAL(μ = −1, σ = 1)")
+      abline(v=mean_norm, col = 'red')
+      abline(v=median_norm, col = 'blue', lty=2)
+      legend("bottomright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+plot(norm_quant, log(norm_pdf(norm_quant)), type = 'l', # PDF log transformation
+      xlab = "Random Variable (x)",
+      ylab = "Density",
+      main = "PDF for log transformation Y=log(x) of X∼LOG NORMAL(μ = −1, σ = 1)")
+      abline(v=mean_norm, col = 'red')
+      abline(v=median_norm, col = 'blue', lty=2)
+      legend("topright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+# Graph 3
+D2 <- rlnorm(samp*sz,mu,sig) %>% # create an array of 1,000 samples of size 100
+  array(dim = c(samp,sz))
+norm_am <- apply(D2, 1, function(x) {mean(x)}) # arithmetic mean of each row
+norm_gm <- apply(D2, 1, function(x) {exp(mean(log(abs(x))))}) # geometric mean of each row !!! LOG - # !!!
+plot(norm_am, norm_gm,
+     xlab = "Arithmetic Mean",
+     ylab = "Geometric Mean")
+abline(0,1, col = "red")
+
+# Histograms
+hist(norm_am, 
+     xlab = "Arithmetic Mean",
+     main = "Histogram of Arithmetic Mean for
+     X∼LOG NORMAL(μ = −1, σ = 1)")
+hist(norm_gm,
+     xlab = "Geometric Mean",
+     main = "Histogram of Geometric Mean for
+     X∼LOG NORMAL(μ = −1, σ = 1)")
+```
+
+In the log normal function shows that almost of values are less than the median/mean as the PDF is very condensed around 1. Similar to the gamma distribution, the arithmetic mean is larger than the geometric mean as the arithmetic mean has high proportions around 0.6 and the geometric mean has high proportions around 0.37. 
+
+### X~UNIFORM(0, 12)
+
+```{r}
+min_unif = 0 # min
+max_unif = 12 # max
+median_unif = 1/2 * (0+12) # median
+mean_unif = 1/2 * (0+12)
+unif_quant = seq(-5,15,.1)
+
+# Graph 1
+unif_cdf <- function(x) punif(x, min_unif, max_unif) # uniform CDF function
+plot(unif_quant, unif_cdf(unif_quant), type = 'l', # CDF
+      xlab = "Random Variable (x)",
+      ylab = "Probability",
+      main = "CDF for X~UNIFORM(0, 12)")
+      abline(v=mean_unif, col = 'red')
+      abline(v=median_unif, col = 'blue', lty=2)
+      legend("bottomright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+unif_pdf <- function(x) dunif(x, min_unif, max_unif) # uniform PDF function
+plot(unif_quant, unif_pdf(unif_quant), type = 'l', # PDF
+      xlab = "Random Variable (x)",
+      ylab = "Density",
+      main = "PDF for X~UNIFORM(0, 12)")
+      abline(v=mean_unif, col = 'red')
+      abline(v=median_unif, col = 'blue', lty=2)
+      legend("topleft", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+# Graph 2
+plot(unif_quant, log(unif_cdf(unif_quant)), type = 'l', # CDF log transformation
+      xlab = "Random Variable (x)",
+      ylab = "Probability",
+      main = "CDF for log transformation Y=log(x) of X~UNIFORM(0, 12)")
+      abline(v=mean_unif, col = 'red')
+      abline(v=median_unif, col = 'blue', lty=2)
+      legend("bottomright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+plot(unif_quant, log(unif_pdf(unif_quant)), type = 'l', # PDF log transformation
+      xlab = "Random Variable (x)",
+      ylab = "Density",
+      main = "PDF for log transformation Y=log(x) of X~UNIFORM(0, 12)")
+      abline(v=mean_unif, col = 'red')
+      abline(v=median_unif, col = 'blue', lty=2)
+      legend("topright", c("Mean", "Median"), col=c("red", "blue"), lty=c(1,2))
+
+# Graph 3
+D3 <- runif(samp*sz, min_unif, max_unif) %>% # create an array of 1,000 samples of size 100
+  array(dim = c(samp,sz))
+unif_am <- apply(D3, 1, function(x) {mean(x)}) # arithmetic mean of each row
+unif_gm <- apply(D3, 1, function(x) {exp(mean(log(x)))}) # geometric mean of each row 
+plot(unif_am, unif_gm,
+     xlab = "Arithmetic Mean",
+     ylab = "Geometric Mean")
+abline(0,1, col = "red")
+
+# Histograms
+hist(unif_am, 
+     xlab = "Arithmetic Mean",
+     main = "Histogram of Arithmetic Mean for
+     X~UNIFORM(0, 12)")
+hist(unif_gm,
+     xlab = "Geometric Mean",
+     main = "Histogram of Geometric Mean for
+     X~UNIFORM(0, 12)")
+```
+
+In the uniform function all values within the minimum, 0, and maximum, 12, have the same relative likelihood (density) of being selected resulting in a flat, horizontal line on the PDF. On the CDF, the minimum value is equal to 0 and the maximum value is equal to 1 since all values in the distribution are equal to or less than the maximum value of 12. Once again the arithmetic means are larger than the geometric means. The arithmetic means are popular around 6, while the geometric means populate around 4.5.
+
+## Part 2
+
+Show that if *X*<sub>*i*</sub> \> 0 for all *i*, then the arithmetic mean is greater than or equal to the geometric mean.
+
+Hint: Start with the sample mean of the transformation *Y*<sub>*i*</sub> = log (*X*<sub>*i*</sub>).
+
+```{r}
+samp = 1000
+sim = 10000
+set.seed((102120))
+data <- runif(samp*sim, 0.01, 10) %>% # create an array of 1,000 samples of size 100
+  array(dim = c(sim,samp))
+am <- apply(data, 1, function(x) {mean(x)}) # arithmetic mean of each row
+gm <- apply(data, 1, function(x) {exp(mean(log(x)))}) # geometric mean of each row
+
+df <- data.frame(Arithmetic_Mean = am, Geometric_Mean = gm)
+
+ggplot(df) +
+  geom_point(aes(x=am, y=gm)) +
+  geom_point(x=5, y= 3.7, shape=3, col = "yellow") +
+  geom_abline(slope = 1, col = "red") +
+  xlim(0,10) +
+  ylim(0,10) +
+  labs(
+    x = "Arithmetic Mean",
+    y = "Geometric Mean"
+  )
+```
+
+To show that the arithmetic mean is always greater than the geometric mean, I ran 10,000 simulations with 1,000 samples each over a uniform distribution and calculated both the geometric and arithmetic means for each simulation. The red line above intercepts at (0,0) and has a slope of 1. This means that the x and y values are equal along the line. Anything above the line favors the y-value, and ything below the line favors the x-value. You can see that every point forms a cluster around (5,3.7) implying the x-value is larger. Another indicator is that every point falls below the red line concluding that the x-value, arithmetic mean, is larger than the y-value, geometric mean. 
+
+This can also be explained by using *Y*<sub>*i*</sub> = log (*X*<sub>*i*</sub>). Log transformations are done to compare data on a relative scale. Because of this the data is adjusted for skewness and will be reduced so that it is never bigger than the arithmetic mean, which is on an absolute scale. 
+
+## Part 3
+
+What is the correct relationship between *E*[log (*X*)] and
+log (*E*[*X*])? Is one always larger? Equal? Explain your answer.
+
+```{r}
+before <- apply(data, 1, function(x) {mean(log(x))}) # arithmetic mean of each row
+after <- apply(data, 1, function(x) {log(mean(x))}) # geometric mean of each row
+
+df2 <- data.frame(before = before, after = after)
+ggplot(df2) +
+  geom_point(aes(x=before, y=after)) +
+  geom_point(x=1.3, y= 1.6, shape=3, col = "yellow") +
+  geom_abline(slope = 1, col = "red") +
+  xlim(0,10) +
+  ylim(0,10) +
+  labs(
+    x = "E[log(X)]",
+    y = "log(E[X])"
+  )
+
+```
+
+The *E*[*X*] is also known as the average value of X. I used the same process and logic from Part 2 to display the results. All of the dots appear above the line of identify implying the *log(E[X])* value is larger. This is also explained by *Jensen's Inequality* which states "the convex transformation of a mean is less than or equal to the mean applied after convex transformation." Although my graph did not display any points that were equal, or on the red line, I believe it accurately depicts Jensen's Inequality.
+
+# Conclusion
+
+After completing this assignment, I have 3 main takeaways. Different distributions result in various CDFs and PDFs that can be adjusted with log transformations. Another conclusion I found was that the arithmatic mean is always greater than the geometric mean due to the difference in absolute and relative variance, similar to relative and absolute error. And my last takeaway was that mean calculations that occur after log transformations are always greater than or equal to means taken before the log transformation. 
