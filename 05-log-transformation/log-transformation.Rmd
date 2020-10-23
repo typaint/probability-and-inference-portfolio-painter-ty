@@ -97,6 +97,10 @@ hist(gam_gm,
      xlab = "Geometric Mean",
      main = "Histogram of Geometric Mean for
      X~Gamma(shape = 3, scale = 1)")
+hist(gam_am - gam_gm,
+     xlab = "Arithmetic Mean - Geometric Mean",
+     main = "Histogram of Difference between Arithmetic Mean 
+     and Geometric Mean for X~Gamma(shape = 3, scale = 1)")
 ```
 
 In this gamma function it is apparent that even thought the probability of having a number less than the mean/median is low, the density of those numbers is extremely high. The arithmetic mean is shown as being greater than the geometric mean in the last 3 graphs as the slope of the points is flatter implying the x-values, the arithmetic mean, has higher values than the y-values, the geometric mean. This is also shown in the histograms where the arithmetic mean has a high distribution around 3 while the geometric mean has a high distribution around 2.5.
@@ -165,6 +169,10 @@ hist(norm_gm,
      xlab = "Geometric Mean",
      main = "Histogram of Geometric Mean for
      X∼LOG NORMAL(μ = −1, σ = 1)")
+hist(norm_am - norm_gm,
+     xlab = "Arithmetic Mean - Geometric Mean",
+     main = "Histogram of Difference between Arithmetic Mean 
+     and Geometric Mean for X∼LOG NORMAL(μ = −1, σ = 1)")
 ```
 
 In the log normal function shows that almost of values are less than the median/mean as the PDF is very condensed around 1. Similar to the gamma distribution, the arithmetic mean is larger than the geometric mean as the arithmetic mean has high proportions around 0.6 and the geometric mean has high proportions around 0.37. 
@@ -233,6 +241,10 @@ hist(unif_gm,
      xlab = "Geometric Mean",
      main = "Histogram of Geometric Mean for
      X~UNIFORM(0, 12)")
+hist(unif_am - unif_gm,
+     xlab = "Arithmetic Mean - Geometric Mean",
+     main = "Histogram of Difference between Arithmetic Mean 
+     and Geometric Mean for X~UNIFORM(0, 12)")
 ```
 
 In the uniform function all values within the minimum, 0, and maximum, 12, have the same relative likelihood (density) of being selected resulting in a flat, horizontal line on the PDF. On the CDF, the minimum value is equal to 0 and the maximum value is equal to 1 since all values in the distribution are equal to or less than the maximum value of 12. Once again the arithmetic means are larger than the geometric means. The arithmetic means are popular around 6, while the geometric means populate around 4.5.
