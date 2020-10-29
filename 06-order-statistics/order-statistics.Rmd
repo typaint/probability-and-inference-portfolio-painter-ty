@@ -308,7 +308,8 @@ ggplot(df10p, aes(x = x, y = porder)) +
   geom_line() +
   theme_classic() +
   labs(title = "CDF of Order Statistics of Standard Normal Distribution
-(Sample Minimum)")
+(Sample Minimum)") +
+  xlim(c(-1.5,1.5))
 ```
 
 The probability of the sample minimum will be exactly 1 in a normal distribution.
@@ -319,12 +320,13 @@ ggplot(df10d, aes(x = x, y = dorder)) +
   geom_line() +
   theme_classic() +
   labs(title = "PDF of Order Statistics of Standard Normal Distribution
-(Sample Minimum)")
+(Sample Minimum)") +
+  xlim(c(-1.5,1.5))
 ```
 
 The density of the sample minimum will be push up and approach -1 since the x value sequence minimum is -1 in this normal distribution.
 
 # Conclusions
 
-The main takeaway from this deliverable is the affect of how changing input paramters of order statistics can drastically affect how the plot displays. Changing what the *k*<sup>*th*</sup> statistic is supposed to be skews the graph along the x-axis for the probability and density functions and along the y-axis for the quantile functions. I also learned how effective QQ Plots are when comparing two related values, in this case theoretical and sample data vectors. 
+The main takeaway from this deliverable is the affect of how changing input paramters of order statistics can drastically affect how the plot displays. Changing what the *k*<sup>*th*</sup> statistic is supposed to be skews the graph along the x-axis for the probability and density functions and along the y-axis for the quantile functions. I also learned how effective QQ Plots are when comparing two related values, in this case theoretical and sample data vectors.  
  
