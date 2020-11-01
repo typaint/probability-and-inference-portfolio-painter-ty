@@ -329,4 +329,5 @@ The density of the sample minimum will be push up and approach -1 since the x va
 # Conclusions
 
 The main takeaway from this deliverable is the affect of how changing input paramters of order statistics can drastically affect how the plot displays. Changing what the *k*<sup>*th*</sup> statistic is supposed to be skews the graph along the x-axis for the probability and density functions and along the y-axis for the quantile functions. I also learned how effective QQ Plots are when comparing two related values, in this case theoretical and sample data vectors. 
+The main takeaway from this deliverable is the affect of how changing input paramters of order statistics can drastically affect how the plot displays. Changing what the *k*<sup>*th*</sup> statistic is supposed to be skews the graph along the x-axis for the probability and density functions and along the y-axis for the quantile functions. I also learned how effective QQ Plots are when comparing two related values, in this case theoretical and sample data vectors.  
  
