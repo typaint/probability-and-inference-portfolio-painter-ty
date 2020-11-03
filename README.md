@@ -11,3 +11,5 @@ DS-5620 Probability and Inference
 [04-Home Field Advantage](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/04-home-field-advantage/home-field-advantage.Rmd)
 
 [05-Log Transformation](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/05-log-transformation/log-transformation.Rmd)
+
+[06-Order-Statistics](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/06-order-statistics/order-statistics.Rmd)
