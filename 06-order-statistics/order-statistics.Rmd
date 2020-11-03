@@ -309,7 +309,7 @@ ggplot(df10p, aes(x = x, y = porder)) +
   theme_classic() +
   labs(title = "CDF of Order Statistics of Standard Normal Distribution
 (Sample Minimum)") +
-  xlim(c(-1.5,1.5))
+  xlim(c(-4,4))
 ```
 
 The probability of the sample minimum will be exactly 1 in a normal distribution.
@@ -321,7 +321,7 @@ ggplot(df10d, aes(x = x, y = dorder)) +
   theme_classic() +
   labs(title = "PDF of Order Statistics of Standard Normal Distribution
 (Sample Minimum)") +
-  xlim(c(-1.5,1.5))
+  xlim(c(-4,4))
 ```
 
 The density of the sample minimum will be push up and approach -1 since the x value sequence minimum is -1 in this normal distribution.
