@@ -303,7 +303,8 @@ qorder_new <- function(p,n,k, dist="norm",...) {
 Use the newly modified functions to plot the probability and density functions for the sample min (N = 200). 
 
 ```{r}
-df10p <- data.frame(x = xvalues, porder = porder_new(xvalues, n=200,k=1,dist="norm"))
+xval = seq(-4, 4, .01)
+df10p <- data.frame(x = xval, porder = porder_new(xval, n=200,k=1,dist="norm"))
 ggplot(df10p, aes(x = x, y = porder)) +
   geom_line() +
   theme_classic() +
@@ -315,7 +316,7 @@ ggplot(df10p, aes(x = x, y = porder)) +
 The probability of the sample minimum will be exactly 1 in a normal distribution.
 
 ```{r}
-df10d <- data.frame(x = xvalues, dorder = dorder_new(xvalues, n=200,k=1,dist="norm"))
+df10d <- data.frame(x = xval, dorder = dorder_new(xval, n=200,k=1,dist="norm"))
 ggplot(df10d, aes(x = x, y = dorder)) +
   geom_line() +
   theme_classic() +
