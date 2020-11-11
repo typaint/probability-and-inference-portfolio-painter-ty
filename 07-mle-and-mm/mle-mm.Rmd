@@ -1,0 +1,1185 @@
+---
+title: "Maximum Likelihood and Method of Moments"
+author: "Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+```
+ 
+# Introduction
+
+In this blog I will use maximum likelihood estimation (MLE) and method of moments (MM) to model Glycohemoglobin (gh) and Height values of adult females. I will evaluate three distributions (normal, gamma, wiebull) in each method. 
+
+## Background
+
+Glycohemoglobin measures the percentage of sugar (glucose) connected to hemoglobin in red blood cells and is related to diabetes. The height values are in centimeters. Both variables are measured among adult women.
+
+# Methods
+ 
+```{r}
+# load data
+require(dplyr)
+Hmisc::getHdata(nhgh)
+d1 <- nhgh %>% 
+  filter(sex == "female") %>% 
+  filter(age >= 18) %>% 
+  select(gh, ht)
+require(stats4)
+```
+
+## Maximum Likelihood Estimation
+
+### Normal Distribution
+
+#### Height of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mle_nh_log_like <- function(params, data) sum(dnorm(data,params[1], params[2], log = TRUE)) # log likelihood, sum(log=T) -> take log and sums of PDF values to make easier to see, trying to maximize; params[1] = mu, params[2] = sigma
+
+# find mu and sigma to maximize function
+mle_nh_g <- function(x) { # constant sigma
+  out <- x
+  for(i in seq_along(x)){ # allows multiple values of mu to be used
+    out[i] <- mle_nh_log_like(c(x[i],7), d1$ht) # sigma constant, 7 = sd of ht
+  }
+  out
+}
+curve(mle_nh_g, 139,191) # range of height from 130 to 191
+abline(v=160, col="red") # max = 160
+
+mle_nh_h <- function(x) { # constant mu
+  out <- x
+  for(i in seq_along(x)){
+    out[i] <- mle_nh_log_like(c(160,x[i]), d1$ht) # mu constant, 160 = max of g function
+  }
+  out
+}
+curve(mle_nh_h,1,15) # range of sd
+abline(v=7, col="red") # max around 6
+
+mean(d1$ht)
+sd(d1$ht)
+```
+
+In the g(x) graph above where sigma is constant, I found that mu, mean height, is maximized in the log likelihood function at around 160. In the h(x) graph above where mu is constant, I found that sigma, standard deviation of height, is maximized in the log likelihood function at around 6. So my estimated parameters are mu = 160 and sigma = 6.
+
+##### Estimated PDF on Histogram
+
+```{r}
+mle_nh_nLL <- function(mean, sd){ # negative log likelihood function
+  fs <- dnorm(
+        x = d1$ht
+      , mean = mean
+      , sd = sd
+      , log = TRUE
+    ) 
+  -sum(fs) # negative log likelihood to be passed into mle function
+}
+mle_nh_param_hat <- mle( # calculate mle of mu and sigma 
+    mle_nh_nLL
+  , start = list(mean = 160.74, sd = 7.32) # estimated params
+  , method = "L-BFGS-B" # algorithm used to max
+  , lower = c(0, 0.01) # ht (mu) can't be less than 0, sigma can't be less than 0
+)
+ht_label = "Height of Adult Females (cm)"
+hist(d1$ht, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MLE: Normal", 
+     xlab = ht_label) # histogram
+curve(dnorm(x, mean = coef(mle_nh_param_hat)[1], sd = coef(mle_nh_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The estimated parameters from above matched up well as the PDF closely shadows the histogram. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$ht), 
+     main = "Estimated CDF on eCDF
+     MLE: Normal",
+     ylab = "Probability",
+     xlab = ht_label) # eCDF
+curve(pnorm(x, mean = coef(mle_nh_param_hat)[1], sd = coef(mle_nh_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+Once again the estimated parameters are accurate as the eCDF points fall along the CDF curve. 
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+qs <- seq(0.05, 0.95, length=50)
+h_sample_qs <- quantile(d1$ht, qs)
+mle_nh_theoretical_qs <- qnorm(qs, mean = coef(mle_nh_param_hat)[1], sd = coef(mle_nh_param_hat)[2])
+plot(h_sample_qs, mle_nh_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Height (cm)
+     MLE: Normal",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of ht along with ecdf and pdf
+```
+
+Finally, the QQ Plot shows the estimated parameters were extremely accurate, as the Sample and Theoretical Qunatile points match the y=x line of identity. This shows that the Sample Qunatile values and Theoretical Qunatile values are almost identical. 
+
+##### Estimated Median
+
+```{r}
+qnorm(.5, mean = coef(mle_nh_param_hat)[1], sd = coef(mle_nh_param_hat)[2]) # median of distribution
+median(d1$ht) # median of distribution
+```
+
+The estimated median of the adult female height in a normal distribution is 160.74cm which is what I expected since the mean and median of a normal distribution should be equal.
+
+##### Median Sample Distribution
+
+```{r}
+R <- 5000
+N <- 1000
+mle_nh_out <- rnorm(R*N, mean = coef(mle_nh_param_hat)[1], sd = coef(mle_nh_param_hat)[2]) %>% array(dim=c(R,N)) #
+mle_nh_sample_dist <- apply(mle_nh_out, 1, median) # sample dist medians
+hist(mle_nh_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MLE: Normal",
+     xlab = ht_label)
+```
+
+In the histogram above the adult female height is most popular around 160.75cm, which is closely related to the median of 160.74cm.  
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mle_nh_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the sample distribution of medians ranges from 160.16cm to 161.30cm.
+
+#### Glycohemoglobin of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mle_ng_log_like <- function(params, data) sum(dnorm(data,params[1], params[2], log = TRUE)) # log likelihood, sum(log=T) -> take log and sums of PDF values to make easier to see, trying to maximize; params[1] = mu, params[2] = sigma
+
+# find mu and sigma to maximize function
+mle_ng_g <- function(x) { # constant sigma
+  out <- x
+  for(i in seq_along(x)){ # allows multiple values of mu to be used
+    out[i] <- mle_ng_log_like(c(x[i],1), d1$gh) # sigma constant, .96 = sd of gh
+  }
+  out
+}
+curve(mle_ng_g, 4.0,16.5) # range of height from 130 to 191
+abline(v=6, col="red") # max = 160
+
+mle_ng_h <- function(x) { # constant mu
+  out <- x
+  for(i in seq_along(x)){
+    out[i] <- mle_ng_log_like(c(6,x[i]), d1$gh) # mu constant, 160 = max of g function
+  }
+  out
+}
+curve(mle_ng_h,1,15) # range of sd
+abline(v=.96, col="red") # max around .96
+
+mean(d1$gh)
+sd(d1$gh)
+range(d1$gh)
+```
+
+In the g(x) graph above where sigma is constant, I found that mu, mean gh, is maximized in the log likelihood function at around 6. In the h(x) graph above where mu is constant, I found that sigma, standard deviation of gh, is maximized in the log likelihood function at around 1. So my estimated parameters are mu = 6 and sigma = 1.
+
+##### Estimated PDF on Histogram
+
+```{r}
+mle_ng_nLL <- function(mean, sd){ # negative log likelihood function
+  fs <- dnorm(
+        x = d1$gh
+      , mean = mean
+      , sd = sd
+      , log = TRUE
+    ) 
+  -sum(fs) # negative log likelihood to be passed into mle function
+}
+mle_ng_param_hat <- mle( # calculate mle of mu and sigma 
+    mle_ng_nLL
+  , start = list(mean = 6, sd = 1) # estimated params
+  , method = "L-BFGS-B" # algorithm used to max
+  , lower = c(0, 0.01) # gh (mu) can't be less than 0, sigma can't be less than 0
+)
+gh_label = "Glycohemoglobin of Adult Females (%)"
+hist(d1$gh, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MLE: Normal", 
+     xlab = gh_label) # histogram
+curve(dnorm(x, mean = coef(mle_ng_param_hat)[1], sd = coef(mle_ng_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The PDF is a little skewed for a normal distribution, but it makes sense since there is such a high density in the histogram to the left of the max of the PDF. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$gh), 
+     main = "Estimated CDF on eCDF
+     MLE: Normal",
+     ylab = "Probability",
+     xlab = gh_label) # eCDF
+curve(pnorm(x, mean = coef(mle_ng_param_hat)[1], sd = coef(mle_ng_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+In the graph above the eCDF is more condensed than the CDF as the eCDF has a greater slope in probability. 
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+g_sample_qs <- quantile(d1$gh, qs)
+mle_ng_theoretical_qs <- qnorm(qs, mean = coef(mle_ng_param_hat)[1], sd = coef(mle_ng_param_hat)[2])
+plot(g_sample_qs, mle_ng_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Glycohemoglobin (%)
+     MLE: Normal",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of gh along with ecdf and pdf
+```
+
+Based on this QQ Plot, the normal distribution is not an accurate representation of the gh levels of adult females. The theoretical and sample quantile points do not fall along the line of identity at all.
+
+##### Estimated Median
+
+```{r}
+qnorm(.5, mean = coef(mle_ng_param_hat)[1], sd = coef(mle_ng_param_hat)[2]) # median of distribution
+median(d1$gh) # median of distribution
+```
+
+The estimated median of the adult gh in a normal distribution is 5.71% which is what I expected since the mean and median of a normal distribution should be equal. However, when I ran the median function, the result was 5.5% which is very odd.
+
+##### Median Sample Distribution
+
+```{r}
+mle_ng_out <- rnorm(R*N, mean = coef(mle_ng_param_hat)[1], sd = coef(mle_ng_param_hat)[2]) %>% array(dim=c(R,N)) #
+mle_ng_sample_dist <- apply(mle_ng_out, 1, median) # sample dist medians
+hist(mle_ng_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MLE: Normal",
+     xlab = gh_label)
+```
+
+In the histogram above the adult female height is most popular around 5.72%, which is closely related to the median of 5.71%.  
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mle_ng_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the sample distribution of medians ranges from 5.63% to 5.78%.
+
+### Gamma Distribution 
+
+#### Height of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mle_gh_nLL <- function(shape, scale){ # negative log likelihood function
+  fs <- dgamma(
+        x = d1$ht
+      , shape = shape
+      , scale = scale
+      , log = TRUE
+    ) 
+  -sum(fs) # negative log likelihood to be passed into mle function
+}
+mle_gh_param_hat <- mle( # calculate mle of mu and sigma 
+    mle_gh_nLL
+  , start = list(shape = 0.1, scale = 0.1) # estimated params
+  , method = "L-BFGS-B" # algorithm used to max
+  , lower = c(0.1, 0.01) # shape and scale cannot be 0
+)
+coef((mle_gh_param_hat))
+```
+
+The estimated parameters for the the gamma distribution are shape = 479.61 and scale = 0.34. 
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$ht, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MLE: Gamma", 
+     xlab = ht_label) # histogram
+curve(dgamma(x, shape = coef(mle_gh_param_hat)[1], scale = coef(mle_gh_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The estimated parameters from above matched up well as the PDF closely shadows the histogram. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$ht), 
+     main = "Estimated CDF on eCDF
+     MLE: Gamma",
+     ylab = "Probability",
+     xlab = ht_label) # eCDF
+curve(pgamma(x, shape = coef(mle_gh_param_hat)[1], scale = coef(mle_gh_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+Once again the estimated parameters are accurate as the eCDF points fall along the CDF curve. 
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mle_gh_theoretical_qs <- qgamma(qs, shape = coef(mle_gh_param_hat)[1], scale = coef(mle_gh_param_hat)[2])
+plot(h_sample_qs, mle_gh_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Height (cm)
+     MLE: Gamma",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of ht along with ecdf and pdf
+```
+
+Finally, the QQ Plot shows the estimated parameters were extremely accurate, as the Sample and Theoretical Qunatile points match the y=x line of identity. This shows that the Sample Qunatile values and Theoretical Qunatile values are almost identical. 
+
+##### Estimated Median
+
+```{r}
+qgamma(.5, shape = coef(mle_gh_param_hat)[1], scale = coef(mle_gh_param_hat)[2]) # median of distribution
+```
+
+The estimated median of the adult female height is 160.63cm in the gamma distribution. This is very similar to the normal distribution median of 160.74cm.
+
+##### Median Sample Distribution
+
+```{r}
+mle_gh_out <- rgamma(R*N, shape = coef(mle_gh_param_hat)[1], scale = coef(mle_gh_param_hat)[2]) %>% array(dim=c(R,N)) 
+mle_gh_sample_dist <- apply(mle_gh_out, 1, median) # sample dist medians
+hist(mle_gh_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MLE: Gamma",
+     xlab = ht_label)
+```
+
+In the histogram above the adult female height is most popular around 160.75cm which is slightly higher than the median of 160.63cm, but the 160.63 value could be included in this bin. This histogram relates closely to the that of the normal distribution.  
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mle_gh_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the sample distribution of medians ranges from 160.07cm to 161.20cm. Which has a slightly smaller range (0.13) than the normal distribution (0.14).
+
+#### Glycohemoglobin of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mle_gg_nLL <- function(shape, scale){ # negative log likelihood function
+  fs <- dgamma(
+        x = d1$gh
+      , shape = shape
+      , scale = scale
+      , log = TRUE
+    ) 
+  -sum(fs) # negative log likelihood to be passed into mle function
+}
+mle_gg_param_hat <- mle( # calculate mle of mu and sigma 
+    mle_gg_nLL
+  , start = list(shape = 0.1, scale = 0.1) # estimated params
+  , method = "L-BFGS-B" # algorithm used to max
+  , lower = c(0.1, 0.01) # shape and scale cannot be 0
+)
+coef((mle_gg_param_hat))
+```
+
+The estimated parameters for the the gamma distribution are shape = 47.25 and scale = 0.12. 
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$gh, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MLE: Gamma", 
+     xlab = gh_label) # histogram
+curve(dgamma(x, shape = coef(mle_gg_param_hat)[1], scale = coef(mle_gg_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The histogram overlayed by the PDF above makes sense since there is such a high density in the histogram to the left of the max of the PDF. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$gh), 
+     main = "Estimated CDF on eCDF
+     MLE: Gamma",
+     ylab = "Probability",
+     xlab = gh_label) # eCDF
+curve(pgamma(x, shape = coef(mle_gg_param_hat)[1], scale = coef(mle_gg_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+In the graph above the CDF has more spread than the eCDF as the CDF has a smaller slope in probability.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mle_gg_theoretical_qs <- qgamma(qs, shape = coef(mle_gg_param_hat)[1], scale = coef(mle_gg_param_hat)[2])
+plot(g_sample_qs, mle_gg_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Glycohemoglobin (%)
+     MLE: Gamma",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of gh along with ecdf and pdf
+```
+
+Based on this QQ Plot, the gamma distribution is not an accurate representation of the gh levels of adult females. The theoretical and sample quantile points do not fall along the line of identity at all.
+
+##### Estimated Median
+
+```{r}
+qgamma(.5, shape = coef(mle_gg_param_hat)[1], scale = coef(mle_gg_param_hat)[2]) # median of distribution
+```
+
+The estimated median of the adult female height is 5.67% in the gamma distribution. This is similar to the normal distribution median of 5.71%.
+
+##### Median Sample Distribution
+
+```{r}
+mle_gg_out <- rgamma(R*N, shape = coef(mle_gg_param_hat)[1], scale = coef(mle_gg_param_hat)[2]) %>% array(dim=c(R,N)) 
+mle_gg_sample_dist <- apply(mle_gg_out, 1, median) # sample dist medians
+hist(mle_gg_sample_dist,  breaks = 50,
+     main = "Median Sample Distribution
+     MLE: Gamma",
+     xlab = gh_label)
+```
+
+In the histogram above the adult female gh is most popular around 5.67% which is equal to the gamma median, but is slightly lower than the normal distribution most popular bin which was slightly higher than 5.7%. The distribution is also slightly left skewed. 
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mle_gg_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the sample distribution of medians ranges from 5.60% to 5.73%. This range of numbers is shifted to the left and smaller compared to the normal distribution range of 5.63% to 5.78%.
+
+### Weibull Distribution
+
+#### Height of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mle_wh_nLL <- function(shape, scale){ # negative log likelihood function
+  fs <- dweibull(
+        x = d1$ht
+      , shape = shape
+      , scale = scale
+      , log = TRUE
+    ) 
+  -sum(fs) # negative log likelihood to be passed into mle function
+}
+mle_wh_param_hat <- mle( # calculate mle of mu and sigma 
+    mle_wh_nLL
+  , start = list(shape = 0.1, scale = 0.1) # estimated params
+  , method = "L-BFGS-B" # algorithm used to max
+  , lower = c(0.1, 0.01) # shape and scale cannot be 0
+)
+coef((mle_wh_param_hat))
+```
+
+The estimated parameters for the the gamma distribution are shape = 21.85 and scale = 164.25. 
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$ht, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MLE: Weibull", 
+     xlab = ht_label) # histogram
+curve(dweibull(x, shape = coef(mle_wh_param_hat)[1], scale = coef(mle_wh_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+Unlike the previous two PDF overlay on Histogram, this weibull distribution PDF is left-skewed (negative) compared to the regular histogram.   
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$ht), 
+     main = "Estimated CDF on eCDF
+     MLE: Weibull",
+     ylab = "Probability",
+     xlab = ht_label) # eCDF
+curve(pweibull(x, shape = coef(mle_wh_param_hat)[1], scale = coef(mle_wh_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+The CDF of the weibull distribution deviates from the eCDF more than the previous two distributions. The CDF is more elongated compared to the eCDF which is more condensed.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mle_wh_theoretical_qs <- qweibull(qs, shape = coef(mle_wh_param_hat)[1], scale = coef(mle_wh_param_hat)[2])
+plot(h_sample_qs, mle_wh_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Height (cm)
+     MLE: Weibull",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of ht along with ecdf and pdf
+```
+
+This QQ Plot clearly shows that the weibull distribution is not an accurate representation of the height data. The weibull theoretical and sample quantiles form a steeper sloped line compared to the the line of identity. The skewness of the weibull distribution can be observed as the points start below the line of identity and then intersect and become larger than the line of identity as the weights increase.   
+
+##### Estimated Median
+
+```{r}
+qweibull(.5, shape = coef(mle_wh_param_hat)[1], scale = coef(mle_wh_param_hat)[2]) # median of distribution
+coef(mle_wh_param_hat)[2] * (log(2))^(1/coef(mle_wh_param_hat)[1]) # median of distribution
+```
+
+The estimated median of the adult female height is 161.52cm in the weibull distribution. This is larger than both of the previous two distributions and is a potential explanation for the skewness of the distribution. 
+
+##### Median Sample Distribution
+
+```{r}
+mle_wh_out <- rweibull(R*N, shape = coef(mle_wh_param_hat)[1], scale = coef(mle_wh_param_hat)[2]) %>% array(dim=c(R,N)) #
+mle_wh_sample_dist <- apply(mle_wh_out, 1, median) # sample dist medians
+hist(mle_wh_sample_dist,  breaks = 50,
+     main = "Median Sample Distribution
+     MLE: Weibull",
+     xlab = ht_label)
+```
+
+In the histogram above the adult female height is most popular around 161.5cm which is higher than the popular bins both the normal distribution and gamma distribution which was around 160.75cm. This histogram also displays the skewness of the weibull distribution and jumps when values are greater than the median.
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mle_wh_sample_dist, c(.025, .975))
+```
+The middle 95% of the sample distribution of medians ranges from 160.85cm to 162.17. This is expected as the skewness would cause this range of numbers to increase.
+
+#### Glycohemoglobin of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mle_wg_nLL <- function(shape, scale){ # negative log likelihood function
+  fs <- dweibull(
+        x = d1$gh
+      , shape = shape
+      , scale = scale
+      , log = TRUE
+    ) 
+  -sum(fs) # negative log likelihood to be passed into mle function
+}
+mle_wg_param_hat <- mle( # calculate mle of mu and sigma 
+    mle_wg_nLL
+  , start = list(shape = 0.1, scale = 0.1) # estimated params
+  , method = "L-BFGS-B" # algorithm used to max
+  , lower = c(0.1, 0.01) # shape and scale cannot be 0
+)
+coef((mle_wg_param_hat))
+```
+
+The estimated parameters for the the gamma distribution are shape = 4.37 and scale = 6.12. 
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$gh, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MLE: Weibull", 
+     xlab = gh_label) # histogram
+curve(dweibull(x, shape = coef(mle_wg_param_hat)[1], scale = coef(mle_wg_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+Compared to the previous two PDF overlay on Histogram, the weibull distribution PDF is much flatter with a seemingly higher spread.   
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$gh), 
+     main = "Estimated CDF on eCDF
+     MLE: Weibull",
+     ylab = "Probability",
+     xlab = gh_label) # eCDF
+curve(pweibull(x, shape = coef(mle_wg_param_hat)[1], scale = coef(mle_wg_param_hat)[2]), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+The CDF of the weibull distribution seems to have less of a curve and more of a sudden jump in probability compared to the previous distribtuions. 
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mle_wg_theoretical_qs <- qweibull(qs, shape = coef(mle_wg_param_hat)[1], scale = coef(mle_wg_param_hat)[2])
+plot(g_sample_qs, mle_wg_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Glycohemoglobin (%)
+     MLE: Weibull",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of gh along with ecdf and pdf
+```
+
+This QQ Plot shows that the weibull distribution is also not an accurate representation of the gh values as the theoretical quantiles are producing much larger values than the sample quantile.   
+
+##### Estimated Median
+
+```{r}
+qweibull(.5, shape = coef(mle_wg_param_hat)[1], scale = coef(mle_wg_param_hat)[2]) # median of distribution
+coef(mle_wg_param_hat)[2] * (log(2))^(1/coef(mle_wg_param_hat)[1]) # median of distribution
+```
+
+The estimated median of the adult female gh is 5.63%. This is significantly lower than the normal (5.71%) and gamma (5.67%) distribution medians.
+
+##### Median Sample Distribution
+
+```{r}
+mle_wg_out <- rweibull(R*N, shape = coef(mle_wg_param_hat)[1], scale = coef(mle_wg_param_hat)[2]) %>% array(dim=c(R,N)) #
+mle_wg_sample_dist <- apply(mle_wg_out, 1, median) # sample dist medians
+hist(mle_wg_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MLE: Weibull",
+     xlab = gh_label)
+```
+
+The median distribution also reflects a lower median value between 5.60% and 5.65%.   
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mle_wg_sample_dist, c(.025, .975))
+```
+The middle 95% range for the weibull distribution has an extremely high spread, specifically on the lower end of the distribution. However, the high end of the distribution is similar to the other distributions
+
+## Method of Moments
+
+### Normal Distribution
+
+#### Height of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mm_nh_mean = mean(d1$ht)
+mm_nh_mean
+mm_nh_sd = sd(d1$ht)
+mm_nh_sd
+```
+
+The estimated mean for height in a normal distribution is 160.74 and the estimated standard deviation is 7.32.
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$ht, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MM: Normal", 
+     xlab = ht_label) # histogram
+curve(dnorm(x, mean = mm_nh_mean, sd = mm_nh_sd), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The method of moments normal distribution PDF fits the distribution of heights well. I assumed this because the distribution is vey spread out (sd = 7.32) in both directions from the mean. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$ht), 
+     main = "Estimated CDF on eCDF
+     MM: Normal",
+     ylab = "Probability",
+     xlab = ht_label) # eCDF
+curve(pnorm(x, mean = mm_nh_mean, sd = mm_nh_sd), add=TRUE, col = "red", lwd = 3) # CDF
+```
+
+The method of moments eCDF and PDF for the height normal distribution are almost an identical match.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mm_nh_theoretical_qs <- qnorm(qs, mean = mm_nh_mean, sd = mm_nh_sd)
+plot(h_sample_qs, mm_nh_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Height (cm)
+     MM: Normal",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of ht along with ecdf and pdf
+```
+
+This QQ Plot shows that the estimates of the height values using method of moments in a normal distribution were almost equivalent to the theoretical height values.
+
+##### Estimated Median
+
+```{r}
+qnorm(.5, mean = mm_nh_mean, sd = mm_nh_sd)
+median(d1$ht)
+```
+
+The median of the normal distribution is very similar to the median of the height data only differing by 0.05.
+
+##### Median Sample Distribution
+
+```{r}
+mm_nh_out <- rnorm(R*N, mean = mm_nh_mean, sd = mm_nh_sd) %>% array(dim=c(R,N)) #
+mm_nh_sample_dist <- apply(mm_nh_out, 1, median) # sample dist medians
+hist(mm_nh_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MM: Normal",
+     xlab = ht_label)
+```
+
+The most populated bin is by the normal median of 160.74. The bins greater than the median are more densely populated than the bins to the left of the median, and the distribution is not as smooth as I expected.
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mm_nh_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the normal distribution has a range of about 0.11 which is smaller than what will be observed among the gamma and weibull ranges for height values. 
+
+#### Glycohemoglobin of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mm_ng_mean = mean(d1$gh)
+mm_ng_mean
+mm_ng_sd = sd(d1$gh)
+mm_ng_sd
+```
+
+The estimated mean for gh in a normal distribution is 5.72 and the estimated standard deviation is 1.05.
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$gh, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MM: Normal", 
+     xlab = ht_label) # histogram
+curve(dnorm(x, mean = mm_ng_mean, sd = mm_ng_sd), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The method of moments normal distribution PDF does not fit the distribution of gh well. The normal PDF does not perfectly align with the most populated bin of the distribution. The gh distribution is right skewed with a long tail so I would guess a gamma distribution would fit better.
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$gh), 
+     main = "Estimated CDF on eCDF
+     MM: Normal",
+     ylab = "Probability",
+     xlab = gh_label) # eCDF
+curve(pnorm(x, mean = mm_ng_mean, sd = mm_ng_sd), add=TRUE, col = "red", lwd = 3) # CDF
+```
+
+The method of moments eCDF and PDF for the gh normal distribution do not fit well. The eCDF slope is larger causing it to be more condensed.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mm_ng_theoretical_qs <- qnorm(qs, mean = mm_ng_mean, sd = mm_ng_sd)
+plot(g_sample_qs, mm_ng_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Glycohemoglobin (%)
+     MM: Normal",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of gh along with ecdf and pdf
+```
+
+This QQ Plot shows that the estimates made using method of moments for the normal distribution were not accurate for the gh values. The sample values seem to repeat a value then jump to another value and then disperse as the values increase. 
+
+##### Estimated Median
+
+```{r}
+qnorm(.5, mean = mm_ng_mean, sd = mm_ng_sd)
+median(d1$gh)
+```
+
+The median of the normal distribution is 0.22 higher than the median of the gh data.
+
+The median of the normal distribution is very similar to the median of the height data only differing by 0.05.
+
+##### Median Sample Distribution
+
+```{r}
+mm_ng_out <- rnorm(R*N, mean = mm_ng_mean, sd = mm_ng_sd) %>% array(dim=c(R,N)) #
+mm_ng_sample_dist <- apply(mm_ng_out, 1, median) # sample dist medians
+hist(mm_ng_sample_dist,  breaks = 50,
+     main = "Median Sample Distribution
+     MM: Normal",
+     xlab = gh_label)
+```
+
+The most populated bin is by the normal median of 5.72, the bins less than the median are more densely populated than the bins to the right of the median.
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mm_ng_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the normal distribution has a range of about 0.16 which is similar to what will be observed among the gamma and weibull ranges for gh values.
+
+### Gamma Distribution
+
+#### Height of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mm_gh_shape = mean(d1$ht)^2 / sd(d1$ht)^2 
+mm_gh_shape
+mm_gh_scale = sd(d1$ht)^2 / mean(d1$ht)
+mm_gh_scale
+```
+
+The estimated shape for height in a gamma distribution is 482.19 and the estimated scale is 0.33.
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$ht, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MM: Gamma", 
+     xlab = ht_label) # histogram
+curve(dgamma(x, shape = mm_gh_shape, scale = mm_gh_scale), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The method of moments gamma distribution PDF fit almost identically to the normal distribution PDF. Both PDFs fit the distribution of heights well. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$ht), 
+     main = "Estimated CDF on eCDF
+     MM: Gamma",
+     ylab = "Probability",
+     xlab = ht_label) # eCDF
+curve(pgamma(x, shape = mm_gh_shape, scale = mm_gh_scale), add=TRUE, col = "red", lwd = 3) # CDF
+```
+
+The method of moments eCDF and PDF for the height gamma distribution are almost an identical match, which is very similar to the normal distribution.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mm_gh_theoretical_qs <- qgamma(qs, shape = mm_gh_shape, scale = mm_gh_scale)
+plot(h_sample_qs, mm_gh_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Height (cm)
+     MM: Gamma",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of ht along with ecdf and pdf
+```
+
+This QQ Plot shows that the estimates made using method of moments for the gamma distribution were also accurate for the height values.
+
+##### Estimated Median
+
+```{r}
+qgamma(.5, shape = mm_gh_shape, scale = mm_gh_scale)
+```
+
+The median of the gamma distribution is still similar to the median of the data but not as close as the normal distribution.
+
+##### Median Sample Distribution
+
+```{r}
+mm_gh_out <- rgamma(R*N, shape = mm_gh_shape, scale = mm_gh_scale) %>% array(dim=c(R,N)) #
+mm_gh_sample_dist <- apply(mm_gh_out, 1, median) # sample dist medians
+hist(mm_gh_sample_dist,  breaks = 50,
+     main = "Median Sample Distribution
+     MM: Gamma",
+     xlab = ht_label)
+```
+
+Although the most populated bin falls near the gamma median of 161.13, the bins less than this value are more densely populated than the bins to the right of the gamma median, which is the opposite of what happened in the normal distribution.
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mm_gh_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the gamma distribution has a larger range of 0.13 than the normal distributio, but includes lower values.
+
+#### Glycohemoglobin of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+mm_gg_shape = mean(d1$gh)^2 / sd(d1$gh)^2 
+mm_gg_shape
+mm_gg_scale = sd(d1$gh)^2 / mean(d1$gh)
+mm_gg_scale
+```
+
+The estimated shape for gh in a gamma distribution is 29.60 and the estimated scale is 0.19.
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$gh, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MM: Gamma", 
+     xlab = gh_label) # histogram
+curve(dgamma(x, shape = mm_gg_shape, scale = mm_gg_scale), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The method of moments gamma distribution PDF fits the gh distribution better than the normal PDF. The gamma PDF is more right skewed and maximizes at the most populated bin. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$gh), 
+     main = "Estimated CDF on eCDF
+     MM: Gamma",
+     ylab = "Probability",
+     xlab = gh_label) # eCDF
+curve(pgamma(x, shape = mm_gg_shape, scale = mm_gg_scale), add=TRUE, col = "red", lwd = 3) # CDF
+```
+
+The method of moments eCDF and PDF for the gh gamma distribution do not fit well, but fits better than the normal distribution as the CDF has a less spread that the normal distribution. 
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mm_gg_theoretical_qs <- qgamma(qs, shape = mm_gg_shape, scale = mm_gg_scale)
+plot(g_sample_qs, mm_gg_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Glycohemoglobin (%)
+     MM: Gamma",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of gh along with ecdf and pdf
+```
+
+This QQ Plot shows that the estimates made using method of moments for the gamma distribution were not accurate for the gh values and is similar to the normal distribution. 
+
+##### Estimated Median
+
+```{r}
+qgamma(.5, shape = mm_gg_shape, scale = mm_gg_scale)
+```
+
+The median of the gamma distribution is the most accurate measure of the gh values as it is only differs by 0.16.
+
+##### Median Sample Distribution
+
+```{r}
+mm_gg_out <- rgamma(R*N, shape = mm_gg_shape, scale = mm_gg_scale) %>% array(dim=c(R,N)) #
+mm_gg_sample_dist <- apply(mm_gg_out, 1, median) # sample dist medians
+hist(mm_gg_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MM: Gamma",
+     xlab = gh_label)
+```
+
+Despite the median having a different value of 5.66 where the most populated bin occurs, this distribution is fairly similar to the normal distribution for gh values
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mm_gg_sample_dist, c(.025, .975))
+```
+
+The middle 95% of the gamma distribution has the same range as the normal distribution but includes lower values.
+
+### Weibull Distribution
+
+#### Height of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+# mm_weib_mean = function(lambda, k) {
+#   lambda * gamma(1+1/k)
+# }
+
+# mm_weib_var = function(lambda, k) {
+#   lambda^2 * (gamma(1+2/k) - (gamma(1+1/k))^2)
+# }
+
+mm_weib_lamb = function(samp_mean, k) {
+  samp_mean / gamma(1+1/k)
+}
+
+mm_weib_var = function(samp_mean, k, samp_var) {
+  mm_weib_lamb(samp_mean,k)^2 * (gamma(1+2/k) - (gamma(1+1/k))^2) - samp_var
+}
+
+plot(x = seq(10,40,.1), y = mm_weib_var(samp_mean = mean(d1$ht), k = seq(10,40,.1), samp_var = var(d1$ht)), type = "l")
+
+mm_wh_optim = optimize(f = function(x) {abs(mm_weib_var(k=x, samp_mean = mean(d1$ht), samp_var = var(d1$ht)))}, lower = 10, upper = 40)
+
+mm_wh_shape = mm_wh_optim$minimum # k value
+mm_wh_shape
+mm_wh_scale = mm_weib_lamb(samp_mean = mean(d1$ht), k = mm_wh_shape) # lambda value
+mm_wh_scale
+```
+
+The estimated shape for gh in a gamma distribution is 29.60 and the estimated scale is 0.19.
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$ht, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MM: Weibull", 
+     xlab = ht_label,
+     ylim = c(0,.065)) # histogram
+curve(dweibull(x, shape = mm_wh_shape, scale = mm_wh_scale), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The method of moments weibull distribution PDF does not fit the height distribution as well as the normal and gamma distributions, as the weibull distribution is left skewed and does not maximize at the most popular bin.
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$ht),     
+     main = "Estimated CDF on eCDF
+     MM: Weibull",
+     ylab = "Probability",
+     xlab = ht_label) # eCDF
+curve(pweibull(x, shape = mm_wh_shape, scale = mm_wh_scale), add=TRUE, col = "red", lwd = 3) # CDF
+```
+
+The PDF does fit the eCDF for the weibull distribution, but the PDF is slightly shifted the the right.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mm_wh_theoretical_qs <- qweibull(qs, shape = mm_wh_shape, scale = mm_wh_scale)
+plot(h_sample_qs, mm_wh_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Height (cm)
+     MM: Weibull",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of ht along with ecdf and pdf
+```
+
+This QQ Plot shows that unlike the normal and gamma distributions for height, the weibull height estimates deviate from the line of identity and tend to be greater than the sample height values. 
+
+##### Estimated Median
+
+```{r}
+qweibull(.5, shape = mm_wh_shape, scale = mm_wh_scale)
+```
+
+The median of the weibull distribution is the least accurate of all 3 distributions. 
+
+##### Median Sample Distribution
+
+```{r}
+mm_wh_out <- rweibull(R*N, shape = mm_wh_shape, scale = mm_wh_scale) %>% array(dim=c(R,N)) #
+mm_wh_sample_dist <- apply(mm_wh_out, 1, median) # sample dist medians
+hist(mm_wh_sample_dist,  breaks = 50,
+     main = "Median Sample Distribution
+     MM: Weibull",
+     xlab = ht_label)
+```
+
+This is similar to the weibull distribution median of 161.81 as the most populated bin is right that value and the bins both greater than and less than the weibull medians almost form a symmetric bell curve.
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mm_wh_sample_dist, c(.025, .975))
+```
+
+The weibull middle 95% of distribution spread is similar to the gamma distributions, and includes the greatest values the 3 distributions.
+
+#### Glycohemoglobin of Adult Females
+
+##### Estimates of Parameters
+
+```{r}
+plot(x = seq(1,25,.1), y = mm_weib_var(samp_mean = mean(d1$gh), k = seq(1,25,.1), samp_var = var(d1$gh)), type = "l")
+
+mm_wg_optim = optimize(f = function(x) {abs(mm_weib_var(k=x, samp_mean = mean(d1$gh), samp_var = var(d1$gh)))}, lower = 1, upper = 25)
+
+mm_wg_shape = mm_wg_optim$minimum # k value
+mm_wg_shape
+mm_wg_scale = mm_weib_lamb(samp_mean = mean(d1$gh), k = mm_wg_shape) # lambda value
+mm_wg_scale
+```
+
+The estimated shape for gh in a weibull distribution is 6.35 and the estimated scale is 6.15.
+
+##### Estimated PDF on Histogram
+
+```{r}
+hist(d1$gh, breaks = 50, freq=FALSE, 
+     main = "Estimated PDF on Histogram
+     MM: Weibull", 
+     xlab = ht_label) # histogram
+curve(dweibull(x, shape = mm_wg_shape, scale = mm_wg_scale), add=TRUE, col = "red", lwd = 3) # estimated PDF
+```
+
+The method of moments weibull distribution PDF does not fit the height distribution as well as the normal and gamma distributions, as the weibull distribution is left skewed and does not maximize at the most popular bin. 
+
+##### Estimated CDF on eCDF
+
+```{r}
+plot(ecdf(d1$gh),     
+     main = "Estimated CDF on eCDF
+     MM: Weibull",
+     ylab = "Probability",
+     xlab = gh_label) # eCDF)
+curve(pweibull(x, shape = mm_wg_shape, scale = mm_wg_scale), add=TRUE, col = "red", lwd = 3)
+```
+
+The gh PDF does not fit the eCDF for the weibull distribution. The PDF has more spread, while the eCDF has a steeper slope.
+
+##### QQ Plot of Distributions (Sample vs. Estimated)
+
+```{r}
+mm_wg_theoretical_qs <- qweibull(qs, shape = mm_wg_shape, scale = mm_wg_scale)
+plot(g_sample_qs, mm_wg_theoretical_qs, pch=16,
+     main = "QQ Plot of Adult Female Glycohemoglobin (%)
+     MM: Weibull",
+     xlab = "Sample Quantile",
+     ylab = "Theoretical Qunatile")
+abline(0,1, col = "red", lwd = 3) # good aprox of gh along with ecdf and pdf
+```
+
+This QQ Plot shows that the estimates made using method of moments for the gamma distribution were not accurate for the gh values. All QQ Plots for the gh values have shown the all 3 distribution estimates were not accurate.
+
+##### Estimated Median
+
+```{r}
+qweibull(.5, shape = mm_wg_shape, scale = mm_wg_scale)
+```
+
+The median of the weibull distribution is the least accurate of all 3 distributions being off by 0.31. 
+
+##### Median Sample Distribution
+
+```{r}
+mm_wg_out <- rweibull(R*N, shape = mm_wg_shape, scale = mm_wg_scale) %>% array(dim=c(R,N)) #
+mm_wg_sample_dist <- apply(mm_wg_out, 1, median) # sample dist medians
+hist(mm_wg_sample_dist, breaks = 50,
+     main = "Median Sample Distribution
+     MM: Weibull",
+     xlab = gh_label)
+```
+
+This relates to the weibull distribution median of 5.81 as the most populated bin is right around 5.80. The weibull distribution follows the previous two distributions for gh values as the bins to the left of the median seem to be denser.
+
+##### Middle 95% of Sample Distribution
+
+```{r}
+quantile(mm_wg_sample_dist, c(.025, .975))
+```
+
+The weibull middle 95% of the distribution spread is similar to both the normal and gamma distributions, but includes the greatest values of the 3 distributions.
+
+# Conclusion
+
+I have two main take-aways from my analysis. The first is the weibull distribution was not a good fit for either variable and I would highly recommend not using this distribution. The second conclusion I formed was that the height values fit both the normal and gamma distributions using both the MLE and MM methods. I did not notice much of a difference between MLE and MM when examining the height and gh distributions. However, I did notice that the weibull distribution produced by the MM was slightly more fitting than the MLE methodology. 
