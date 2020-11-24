@@ -13,3 +13,5 @@ DS-5620 Probability and Inference
 [05-Log Transformation](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/05-log-transformation/log-transformation.Rmd)
 
 [06-Order-Statistics](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/06-order-statistics/order-statistics.Rmd)
+
+[06-MLE-MM](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/07-mle-and-mm/mle-mm.Rmd)
