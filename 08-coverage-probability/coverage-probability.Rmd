@@ -1,0 +1,120 @@
+---
+title: "Coverage Probability"
+author: "Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+library(tidyverse)
+```
+
+# Introduction
+
+In this blog I will examine the 95% confidence interval for sample medians through simulation. I will then elaborate on what coverage probability is and how it applies to this simulation.
+
+## Background
+
+Coverage probability is essential to estimating confidence intervals. For this specific simulation, the 95% confidence interval will be defined as the middle 95% of the sampling distribution. The coverage probability will be defined as the overall intervals that contain the specified population parameter, in this case the median. Theoretically, the 95% confidence interval will contain the population mean 95% of the time.
+
+# Methods
+
+## Generate a single sample from a standard normal distribution of size N = 201.
+
+```{r}
+set.seed(11222020)
+N = 201
+samp <- rnorm(N)
+# parameter of interest is median
+median(samp) # sample median, not true median
+mle.mean <- mean(samp)
+mle.sd <- sqrt(((N-1)/N)*var(samp))
+
+hist(samp, freq=FALSE,
+     breaks = 15,
+     ylim=c(0,.5), 
+     main = "Distribution of Single Sample",
+     xlab = "Samples")
+curve(dnorm(x, mle.mean, mle.sd), add = TRUE)
+```
+
+I generated sample of 201 numbers from random normal distribution. By doing this, I would expect the median to be around 0 and it was very close at 0.08.
+
+## Approximate the sampling distribution of the median, conditional on the estimate of the distribution in the previous step.
+
+```{r}
+n = 5000 # 5,000 replicates
+meds = NA
+
+for (i in 1:n){
+  re.samp = rnorm(N, mle.mean, mle.sd) # resample 201 numbers, with sample mean and sd 
+  meds[i] = median(re.samp) # record the median of each replicate sample
+}
+
+hist(meds, # display distribution of all the replicate sample medians
+     main = "Sampling Distribution of the Medians",
+     #ylim=c(0,.5),
+     xlab = "Sample Medians")
+# hist(rbeta(5000, 101, 101) %>% # random beta distribution of 5,000 observations of medians (101 of 201) 
+#        qnorm(mean = mle.mean, sd = mle.sd)) # passed into a normal distribution
+```
+
+When resampling the data and finding the medians of 5,000 replicates, the medians should become more condensed around 0 compare to the original sample. 
+
+## Describe how you calculate a 95% confidence interval from the approximated sampling distribution.
+
+```{r}
+ci <- quantile(meds, c(0.025, 0.975))
+ci
+(ci[1] < 0 & ci[2] > 0)
+```
+
+I used the quantile function calculate the 95% confidence interval of the sample medians. The lower limit is -0.18 and the upper limit is 0.18 and 0 falls within these limits.
+
+## Explain the concept of coverage probability. Explain your code for calculating the coverage probability.
+
+```{r}
+gen.ci.med = function(n = 5000, N=201, param.int = 0){ # function to generate confidence interval medians
+  
+  samp <- rnorm(N) # random normal distribution of number
+
+  mle.mean <- mean(samp)
+  mle.sd <- sqrt(((N-1)/N)*var(samp))
+  meds = NA
+  
+  for (i in 1:n){ # generates vector of 5,000 medians 
+    re.samp = rnorm(N, mle.mean, mle.sd) # resample 201 numbers, with sample mean and sd 
+    meds[i] = median(re.samp) # record the median of each replicate sample
+  }   
+  
+  ci <- quantile(meds, c(0.025, 0.975)) # calculate 95% confidence interval
+  return (ci[1] < param.int & ci[2] > param.int) # test if parameter is within the 95% confidence interval
+}
+```
+
+To calculate the coverage probability I created random normal distribution of 201 numbers. I then calculated the sample mean and standard deviation. I then ran 5,000 replicates and found the median of each replicate. I then used the quantile function to establish the 95% confidence interval and ran a test to determine if the input parameter is within that interval. 
+
+## Perform the simulation and report the results.
+
+```{r}
+ci.contain = NA
+for (i in 1:1000){ # run 1,000 simulations
+  ci.contain[i] = gen.ci.med() # vector of T/F
+}
+
+mean(ci.contain) # probability of T = probability of parameter being within the CI
+```
+
+To perform the simulation ran the coverage probability function 1,000 times. This produced a vector of 1,000 True/False variables. Calculating the mean of this vector finds the overall probability of the median being within the 95% confidence interval. The result was 98.5% which is slightly higher than the generalized 95% confidence interval. 
+
+# Conclusions
+
+The main takeaway from this blog is that the 95% confidence interval gives a better understanding of where the highest density distribution lies. Also as the sample size, replicates, and the simulations in crease, the coverage probability approaches 0.95. 
+
