@@ -45,7 +45,7 @@ hist(samp, freq=FALSE,
 curve(dnorm(x, mle.mean, mle.sd), add = TRUE)
 ```
 
-I generated sample of 201 numbers from random normal distribution. By doing this, I would expect the median to be around 0 and it was very close at 0.08.
+I generated sample of 201 numbers from random normal distribution. By doing this, I would expect the median to be around 0 and it was very close at 0.08. I used MLE to estimate the distribution by obtaining the mean and standard deviation from the random sample. Although the MLE mean and standard deviation are not the "true" mean and standard deviation, the MLE calculations are good estimators of what the "true" mean and standard deviation will be. 
 
 ## Approximate the sampling distribution of the median, conditional on the estimate of the distribution in the previous step.
 
