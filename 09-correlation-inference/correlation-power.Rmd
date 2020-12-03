@@ -1,0 +1,78 @@
+---
+title: "Correlation Power"
+author: "Ty Painter"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r global options, include = FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+library(mvtnorm)
+```
+
+# Introduction
+
+The main focus of this blog is to perform a power and sample size calculation to submit with a grant application to fund a study analyzing the correlation between two measurements. The purpose of this study is to find two correlating measurements and select the measurement that is more efficient and cost effective. The minimum benchmark that the two measurements must meet is 0.8. 
+
+## Background
+
+The analysis will be conducted using a one-sided confidence interval. For the study to be conclusive and a success, the confidence interval must be within the range from 0.8 to 1. In other words the correlation between the two measurements must be greater than 0.8. The probability of this study being a success when the true correlation is 0.8, is called *Power*. *Power* will be estimated using various sample sizes (25, 50, 75, 100) and true population correlations (0.8 to 0.95). 
+
+  *Power* = 1 - Type II Error ($\beta$)
+
+# Methods
+
+```{r}
+power.corr <- function(N,rho) {
+  null_correlation <- 0.8 
+  R <- 5000 # replicates
+  power = NA
+  
+  for(j in 1:length(rho)){
+    sigma <- array(c(1,rho[j],rho[j],1), c(2,2)) # matrix
+    mu <- c(0,0)
+    
+    detect <- rep(NA, R)
+    for(i in 1:R){
+      data <- rmvnorm(N[j], mean = mu, sigma = sigma) # random multivariate normal, A in col1, B in col2
+      results <- cor.test(x = data[,1], y = data[,2], alternative = "greater") # generate 1 sided 95% CI
+      detect[i] <- results$conf.int[1] > null_correlation # test if lower bound of CI is > 0.8
+    }
+    power[j] <- mean(detect) # proportion of replicates that CI is > 0.8
+  }
+  return(power)
+}
+```
+
+I created a function to calculate the *power* using the input parameters of **sample size** and **true correlation**. The function creates a random multivariate normal distribution and generates a 95% confidence interval. I then conduct testing to determine if the sample correlation lower bound the specified confidence interval is above the specified 0.8 correlation benchmark. Finally after running 5,000 simulations, I calculate the probability of the confidence interval of the previously mentioned results being above 0.8.  
+
+# Results
+
+```{r}
+N <- seq(25, 100, by = 25) # sample size
+rho <- seq(.8, .95, by = .01) # true pop correlation
+#combo <-expand.grid(N,rho)
+
+graph.data <- outer(X=N, Y=rho, FUN=power.corr) # N (x) is row, rho (y) is col, each line on graph is one row
+rownames(graph.data) <- c("N = 25","N = 50","N = 75","N = 100")
+nn <- nrow(graph.data)
+
+matplot(t(graph.data), type = "l", lty = 1, lwd = 2.5, xaxt = "n", ann=FALSE)
+axis(1, labels=rho, at=c(1:length(rho)))
+title(xlab = "Correlation",
+      ylab = "Power")
+legend("right", rownames(graph.data),col=seq_len(nn),fill=seq_len(nn))
+```
+
+In the graphic above, the *power* increases at a faster rate, or greater slope, as the sample size increases. Sample size = 100 tops out at *power* = 1 when the *true correlation* is around 0.9, while sample size = 25 never maximizes its *power* value at 1. 
+
+# Conclusions
+
+The main conclusion I made from this analysis is that sample makes a big impact on *power*, or that the study will be successful if the *true correlation* is greater than 0.8. The biggest different I noticed between the sample sizes is when the *true correlation* is between 0.83 and 0.93. In this range, the difference in the *power* value between the various sample sizes is the greatest. My guess would be the 95% confidence interval would somewhere near the 0.83 to 0.93 range.
+
