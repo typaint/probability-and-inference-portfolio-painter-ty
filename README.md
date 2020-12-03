@@ -17,3 +17,5 @@ DS-5620 Probability and Inference
 [07-MLE-MM](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/07-mle-and-mm/mle-mm.Rmd)
 
 [08-Coverage-Probability](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/08-coverage-probability/coverage-probability.Rmd)
+
+[09-Power Correlation](https://github.com/typaint/probability-and-inference-portfolio-painter-ty/blob/master/09-correlation-inference/correlation-power.Rmd)
