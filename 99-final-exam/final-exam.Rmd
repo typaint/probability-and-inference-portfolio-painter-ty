@@ -82,18 +82,16 @@ game <- function(N){
 R <- 1000 # number of replicates
 strategy1 = rep(NA, R) # strategy 1 results
 strategy2 = rep(NA, R) # strategy 2 results
-goat1 = rep(NA, R) # strategy 1 goat
-goat2 = rep(NA, R) # strategy 2 goat
+goat = rep(NA, R) # both strategies = goat
 set.seed(120320)
 for (i in seq_along(strategy1)) {
   strategy1[i] = game(4)[1] # assign strategy 1 result
   strategy2[i] = game(4)[2] # assign strategy 2 result
-  goat1[i] <- ifelse(strategy1[i]=="goat", 1,0) # determine if strategy 1 was a goat
-  goat2[i] <- ifelse(strategy2[i]=="goat", 1,0) # determine if strategy 2 was a goat
+  goat[i] <- ifelse(strategy1[i]=="goat" & strategy2[i]=="goat", 1,0) # determine if both strategies = goat
 }
 
-mean(goat1) # calculate probability of strategy 1 results in goat
-mean(goat2) # calculate probability of strategy 2 results in goat
+mean(goat) # calculate probability both result in goat
+
 ```
 The probability of Strategy 1 ending in goat is 76.8% and the probability of Strategy 2 ending in goat is 61.9%. 
 
@@ -327,12 +325,35 @@ When overlaying the ECDF and CDF the it seems that the the ECDF sample medians s
 
 **A.** Of the 25th, 50th, and 75th quantiles of the distribution from **B**, which will have the tighest 95% CI?  (Show the sampling distribution of each.)
 ```{r}
-quantile(Fk(median_draws,k=25,n=101), probs = c(0.025,0.975)) # 25th quantile
-hist(Fk(median_draws,k=25,n=101), breaks = 50)
-quantile(Fk(median_draws,k=50,n=101), probs = c(0.025,0.975)) # 50th quantile
-hist(Fk(median_draws,k=50,n=101), breaks = 50)
-quantile(Fk(median_draws,k=75,n=101), probs = c(0.025,0.975)) # 75th quantile
-hist(Fk(median_draws,k=75,n=101), breaks = 50)
+set.seed(120621)
+R <- 1000
+N <- 101
+two_five <- rep(NA, R)
+median_draws <- rep(NA, R)
+seven_five <- rep(NA, R)
+
+for (i in seq_along(median_draws)){
+  two_five[i] = quantile(exp(rnorm(N,mean=0,sd=1)), 0.25)
+  median_draws[i] = median(exp(rnorm(N,mean=0,sd=1)))
+  seven_five[i] = quantile(exp(rnorm(N,mean=0,sd=1)), 0.75)
+}
+
+hist(two_five, breaks = 50,
+     xlab = "Blood Chemistry Measure",
+     main = "Log Normal Distribution, 25th Percentile
+     (μ = 0, σ = 1)")
+quantile(two_five, probs = c(0.025, 0.975))
+
+hist(median_draws, breaks = 50,
+     xlab = "Blood Chemistry Measure",
+     main = "Log Normal Distribution, Median
+     (μ = 0, σ = 1)")
+quantile(median_draws, probs = c(0.025, 0.975))
+hist(seven_five, breaks = 50,
+     xlab = "Blood Chemistry Measure",
+     main = "Log Normal Distribution, 75th Percentile
+     (μ = 0, σ = 1)")
+quantile(seven_five, probs = c(0.025, 0.975))
 ```
 The 25th quantile will have a tighter 95% confidence interval. This makes sense based on the sampling distributions because the 25th percentile histogram has a tighter distribution around 1 compared the the 75th quantile which has a little more spread beyond 0.
 
